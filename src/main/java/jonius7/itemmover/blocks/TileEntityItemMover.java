@@ -8,14 +8,14 @@ import net.minecraft.util.Facing;
 
 public class TileEntityItemMover extends TileEntity implements IInventory {
 
-    // --- Inventory ---
+    // --- Internal inventory ---
     private ItemStack[] inventory = new ItemStack[1];
 
     // --- Configurable fields ---
     private int inputSlot = 0;
     private int outputSlot = 0;
-    private int inputSide = 2;       // side to pull from (0=down,1=up,2=north,3=south,4=west,5=east)
-    private int outputSide = 3;      // side to push to
+    private int inputSide = 2;  // 0=DOWN,1=UP,2=NORTH,3=SOUTH,4=WEST,5=EAST
+    private int outputSide = 3;
 
     // --- Update each tick ---
     @Override
@@ -23,78 +23,119 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         if (worldObj.isRemote) return;
 
         // Pull from input side
-        int inX = xCoord + Facing.offsetsXForSide[inputSide];
-        int inY = yCoord + (inputSide == 0 ? -1 : inputSide == 1 ? 1 : 0);
-        int inZ = zCoord + Facing.offsetsZForSide[inputSide];
-
-        TileEntity inTe = worldObj.getTileEntity(inX, inY, inZ);
-        if (inTe instanceof IInventory) {
-            IInventory inInv = (IInventory) inTe;
-            ItemStack stack = inInv.getStackInSlot(targetSlot);
-            if (stack != null) {
-                ItemStack taken = inInv.decrStackSize(targetSlot, 1);
-                insertItem(0, taken);
+        IInventory inInv = getAdjacentInventory(inputSide);
+        if (inInv != null && inputSlot >= 0 && inputSlot < inInv.getSizeInventory()) {
+            ItemStack inStack = inInv.getStackInSlot(inputSlot);
+            if (inStack != null) {
+                if (inventory[0] == null) {
+                    // Internal empty → pull the whole stack
+                    inventory[0] = inInv.decrStackSize(inputSlot, inStack.stackSize);
+                    markDirty();
+                } else if (inventory[0].isItemEqual(inStack) &&
+                           ItemStack.areItemStackTagsEqual(inventory[0], inStack)) {
+                    // Same item → merge as much as possible
+                    int max = Math.min(inventory[0].getMaxStackSize(), getInventoryStackLimit());
+                    int canAdd = max - inventory[0].stackSize;
+                    if (canAdd > 0) {
+                        int take = Math.min(canAdd, inStack.stackSize);
+                        inventory[0].stackSize += take;
+                        inInv.decrStackSize(inputSlot, take);
+                        markDirty();
+                    }
+                }
             }
         }
 
         // Push to output side
-        int outX = xCoord + Facing.offsetsXForSide[outputSide];
-        int outY = yCoord + (outputSide == 0 ? -1 : outputSide == 1 ? 1 : 0);
-        int outZ = zCoord + Facing.offsetsZForSide[outputSide];
-
-        TileEntity outTe = worldObj.getTileEntity(outX, outY, outZ);
-        if (outTe instanceof IInventory && inventory[0] != null) {
-            ItemStack remaining = insertIntoInventory((IInventory) outTe, inventory[0]);
-            inventory[0] = remaining;
-            markDirty();
-        }
-    }
-
-    // --- Helper: Insert into another inventory ---
-    private ItemStack insertIntoInventory(IInventory inv, ItemStack stack) {
-        for (int i = 0; i < inv.getSizeInventory(); i++) {
-            ItemStack slot = inv.getStackInSlot(i);
-            if (slot == null) {
-                inv.setInventorySlotContents(i, stack);
-                return null;
-            } else if (slot.isItemEqual(stack) && ItemStack.areItemStackTagsEqual(slot, stack)) {
-                int max = Math.min(slot.getMaxStackSize(), inv.getInventoryStackLimit());
-                int newSize = slot.stackSize + stack.stackSize;
-                if (newSize <= max) {
-                    slot.stackSize = newSize;
-                    return null;
-                } else {
-                    slot.stackSize = max;
-                    stack.stackSize = newSize - max;
+        if (inventory[0] != null) {
+            IInventory outInv = getAdjacentInventory(outputSide);
+            if (outInv != null) {
+                int slot = Math.min(outputSlot, outInv.getSizeInventory() - 1);
+                if (slot >= 0) {
+                    inventory[0] = insertIntoInventorySlot(outInv, slot, inventory[0]);
+                    markDirty();
                 }
             }
         }
-        return stack; // leftover if it could not fit
     }
-    
-    private void insertItem(int slot, ItemStack stack) {
-        if (stack == null) return;
 
-        if (inventory[slot] == null) {
-            inventory[slot] = stack;
-        } else if (inventory[slot].isItemEqual(stack) && ItemStack.areItemStackTagsEqual(inventory[slot], stack)) {
-            int max = Math.min(inventory[slot].getMaxStackSize(), getInventoryStackLimit());
-            int total = inventory[slot].stackSize + stack.stackSize;
-            inventory[slot].stackSize = Math.min(total, max);
+    // --- Helper: Get adjacent inventory by side ---
+    private IInventory getAdjacentInventory(int side) {
+        int x = xCoord + Facing.offsetsXForSide[side];
+        int y = yCoord + (side == 0 ? -1 : side == 1 ? 1 : 0);
+        int z = zCoord + Facing.offsetsZForSide[side];
+        TileEntity te = worldObj.getTileEntity(x, y, z);
+        return te instanceof IInventory ? (IInventory) te : null;
+    }
+
+    // --- Helper: Insert into internal inventory ---
+    private void insertIntoInternal(ItemStack stack) {
+        if (inventory[0] == null) {
+            inventory[0] = stack;
+        } else if (inventory[0].isItemEqual(stack) && ItemStack.areItemStackTagsEqual(inventory[0], stack)) {
+            int max = Math.min(inventory[0].getMaxStackSize(), getInventoryStackLimit());
+            int newSize = inventory[0].stackSize + stack.stackSize;
+            if (newSize <= max) {
+                inventory[0].stackSize = newSize;
+            } else {
+                inventory[0].stackSize = max;
+                stack.stackSize = newSize - max;
+            }
         }
         markDirty();
     }
 
-    // --- IInventory Implementation ---
-    @Override
-    public int getSizeInventory() {
-        return inventory.length;
+    /**
+     * Tries to insert the given stack into the specified slot of the inventory.
+     * Merges if possible, leaves leftover in the returned ItemStack.
+     *
+     * @param inv   The target inventory
+     * @param slot  The target slot
+     * @param stack The stack to insert
+     * @return The leftover stack (null if completely inserted)
+     */
+    private ItemStack insertIntoInventorySlot(IInventory inv, int slot, ItemStack stack) {
+        if (stack == null || slot < 0 || slot >= inv.getSizeInventory()) return stack;
+
+        ItemStack target = inv.getStackInSlot(slot);
+
+        // Empty slot → insert completely
+        if (target == null) {
+            inv.setInventorySlotContents(slot, stack);
+            return null;
+        }
+
+        // Same item & NBT → merge
+        if (target.isItemEqual(stack) && ItemStack.areItemStackTagsEqual(target, stack)) {
+            int max = Math.min(target.getMaxStackSize(), inv.getInventoryStackLimit());
+            int newSize = target.stackSize + stack.stackSize;
+
+            if (newSize <= max) {
+                target.stackSize = newSize;
+                return null; // completely inserted
+            } else {
+                target.stackSize = max;
+                stack.stackSize = newSize - max; // leftover
+                return stack;
+            }
+        }
+
+        // Different item → cannot insert
+        return stack;
+    }
+    
+    // --- Helper: get max valid slot for a given side ---
+    public int getMaxSlot(int side) {
+        IInventory inv = getAdjacentInventory(side);
+        return inv != null ? Math.max(inv.getSizeInventory() - 1, 0) : 0;
     }
 
+    // --- IInventory implementation ---
     @Override
-    public ItemStack getStackInSlot(int slot) {
-        return inventory[slot];
-    }
+    public int getSizeInventory() { return inventory.length; }
+    
+    @Override
+    public ItemStack getStackInSlot(int slot) { return inventory[slot]; }
 
     @Override
     public ItemStack decrStackSize(int slot, int amount) {
@@ -125,19 +166,13 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     }
 
     @Override
-    public String getInventoryName() {
-        return "container.itemMover";
-    }
+    public String getInventoryName() { return "container.itemMover"; }
 
     @Override
-    public boolean hasCustomInventoryName() {
-        return false;
-    }
+    public boolean hasCustomInventoryName() { return false; }
 
     @Override
-    public int getInventoryStackLimit() {
-        return 64;
-    }
+    public int getInventoryStackLimit() { return 64; }
 
     @Override
     public boolean isUseableByPlayer(net.minecraft.entity.player.EntityPlayer player) {
@@ -145,13 +180,9 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
                 player.getDistanceSq(xCoord + 0.5, yCoord + 0.5, zCoord + 0.5) <= 64;
     }
 
-    @Override
-    public void openInventory() {}
-    @Override
-    public void closeInventory() {}
-    @Override
-    public boolean isItemValidForSlot(int slot, ItemStack stack) { return true; }
-
+    @Override public void openInventory() {}
+    @Override public void closeInventory() {}
+    @Override public boolean isItemValidForSlot(int slot, ItemStack stack) { return true; }
     @Override
     public ItemStack getStackInSlotOnClosing(int slot) {
         if (inventory[slot] != null) {
@@ -162,9 +193,12 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         return null;
     }
 
-    // --- Config Getters/Setters ---
-    public int getTargetSlot() { return targetSlot; }
-    public void setTargetSlot(int slot) { targetSlot = slot; markDirty(); }
+    // --- Config getters/setters ---
+    public int getInputSlot() { return inputSlot; }
+    public void setInputSlot(int slot) { inputSlot = slot; markDirty(); }
+
+    public int getOutputSlot() { return outputSlot; }
+    public void setOutputSlot(int slot) { outputSlot = slot; markDirty(); }
 
     public int getInputSide() { return inputSide; }
     public void setInputSide(int side) { inputSide = side; markDirty(); }
@@ -172,11 +206,12 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     public int getOutputSide() { return outputSide; }
     public void setOutputSide(int side) { outputSide = side; markDirty(); }
 
-    // --- Save/Load NBT ---
+    // --- NBT save/load ---
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
-        tag.setInteger("TargetSlot", targetSlot);
+        tag.setInteger("InputSlot", inputSlot);
+        tag.setInteger("OutputSlot", outputSlot);
         tag.setInteger("InputSide", inputSide);
         tag.setInteger("OutputSide", outputSide);
         if (inventory[0] != null) {
@@ -189,14 +224,16 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     @Override
     public void readFromNBT(NBTTagCompound tag) {
         super.readFromNBT(tag);
-        targetSlot = tag.getInteger("TargetSlot");
+        inputSlot = tag.getInteger("InputSlot");
+        outputSlot = tag.getInteger("OutputSlot");
         inputSide = tag.getInteger("InputSide");
         outputSide = tag.getInteger("OutputSide");
         if (tag.hasKey("ItemSlot0")) {
             inventory[0] = ItemStack.loadItemStackFromNBT(tag.getCompoundTag("ItemSlot0"));
         }
     }
-    
+
+    // --- Side names helper ---
     public static String getSideName(int side) {
         switch (side) {
             case 0: return "DOWN";

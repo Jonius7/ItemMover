@@ -10,18 +10,20 @@ import net.minecraft.world.World;
 
 public class PacketUpdateItemMover implements IMessage {
 
-    private int x, y, z;
-    private int slot;
-    private int inputSide;
-    private int outputSide;
+    public int x, y, z;
+    public int inputSlot, outputSlot;
+    public int inputSide, outputSide;
 
+    // --- Empty constructor required ---
     public PacketUpdateItemMover() {}
 
+    // --- Construct packet from tile entity ---
     public PacketUpdateItemMover(TileEntityItemMover te) {
         this.x = te.xCoord;
         this.y = te.yCoord;
         this.z = te.zCoord;
-        this.slot = te.getTargetSlot();
+        this.inputSlot = te.getInputSlot();
+        this.outputSlot = te.getOutputSlot();
         this.inputSide = te.getInputSide();
         this.outputSide = te.getOutputSide();
     }
@@ -31,7 +33,8 @@ public class PacketUpdateItemMover implements IMessage {
         x = buf.readInt();
         y = buf.readInt();
         z = buf.readInt();
-        slot = buf.readInt();
+        inputSlot = buf.readInt();
+        outputSlot = buf.readInt();
         inputSide = buf.readInt();
         outputSide = buf.readInt();
     }
@@ -41,11 +44,13 @@ public class PacketUpdateItemMover implements IMessage {
         buf.writeInt(x);
         buf.writeInt(y);
         buf.writeInt(z);
-        buf.writeInt(slot);
+        buf.writeInt(inputSlot);
+        buf.writeInt(outputSlot);
         buf.writeInt(inputSide);
         buf.writeInt(outputSide);
     }
 
+    // --- Handler to apply packet to server tile entity ---
     public static class Handler implements IMessageHandler<PacketUpdateItemMover, IMessage> {
         @Override
         public IMessage onMessage(PacketUpdateItemMover message, MessageContext ctx) {
@@ -53,12 +58,12 @@ public class PacketUpdateItemMover implements IMessage {
             TileEntity te = world.getTileEntity(message.x, message.y, message.z);
             if (te instanceof TileEntityItemMover) {
                 TileEntityItemMover mover = (TileEntityItemMover) te;
-                mover.setTargetSlot(message.slot);
+                mover.setInputSlot(message.inputSlot);
+                mover.setOutputSlot(message.outputSlot);
                 mover.setInputSide(message.inputSide);
                 mover.setOutputSide(message.outputSide);
-                mover.markDirty();
             }
-            return null;
+            return null; // no response needed
         }
     }
 }

@@ -14,19 +14,23 @@ public class ContainerItemMover extends Container {
     public ContainerItemMover(InventoryPlayer playerInv, TileEntityItemMover tile) {
         this.tile = tile;
 
-        // Add the ItemMover's single slot at (8, 35)
+        // --- TileEntity internal slot (single slot) ---
         this.addSlotToContainer(new Slot(tile, 0, 8, 35));
 
-        // Player inventory (3x9)
+        // --- Player Inventory (3 rows x 9 columns) ---
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                this.addSlotToContainer(new Slot(playerInv, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
+                int x = 8 + col * 18;
+                int y = 84 + row * 18;
+                this.addSlotToContainer(new Slot(playerInv, col + row * 9 + 9, x, y));
             }
         }
 
-        // Player hotbar (1x9)
+        // --- Player Hotbar (1 row x 9 columns) ---
         for (int col = 0; col < 9; col++) {
-            this.addSlotToContainer(new Slot(playerInv, col, 8 + col * 18, 142));
+            int x = 8 + col * 18;
+            int y = 142;
+            this.addSlotToContainer(new Slot(playerInv, col, x, y));
         }
     }
 
@@ -35,9 +39,36 @@ public class ContainerItemMover extends Container {
         return tile.isUseableByPlayer(player);
     }
 
-    // Optional: implement shift-click if desired
+    // --- Shift-click handling ---
     @Override
-    public ItemStack transferStackInSlot(EntityPlayer player, int slotIndex) {
-        return null;
+    public ItemStack transferStackInSlot(EntityPlayer player, int index) {
+        ItemStack itemstack = null;
+        Slot slot = (Slot) this.inventorySlots.get(index);
+
+        if (slot != null && slot.getHasStack()) {
+            ItemStack stackInSlot = slot.getStack();
+            itemstack = stackInSlot.copy();
+
+            // Internal slot -> player inventory
+            if (index == 0) {
+                if (!this.mergeItemStack(stackInSlot, 1, 37, true)) {
+                    return null;
+                }
+            } 
+            // Player inventory -> internal slot
+            else {
+                if (!this.mergeItemStack(stackInSlot, 0, 1, false)) {
+                    return null;
+                }
+            }
+
+            if (stackInSlot.stackSize == 0) {
+                slot.putStack(null);
+            } else {
+                slot.onSlotChanged();
+            }
+        }
+
+        return itemstack;
     }
 }
