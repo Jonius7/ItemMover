@@ -1,0 +1,38 @@
+# mac os
+.DS_Store
+
+# forge / gradle
+.gradle
+build/
+out/
+classes/
+run/
+
+# Minecraft Launch
+config/
+logs/
+
+# eclipse 
+*.launch
+.settings
+.classpath
+.project
+eclipse
+
+.idea/
+*.iml
+*.ipr
+*.iws
+*.bat
+
+# vscode
+.settings/
+.vscode/
+bin/
+.classpath
+
+# Minecraft
+mods/
+saves/
+usernamecache.json
+options.txt
