@@ -22,31 +22,27 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     public void updateEntity() {
         if (worldObj.isRemote) return;
 
-        // Pull from input side
+        // --- Pull from input side ---
         IInventory inInv = getAdjacentInventory(inputSide);
         if (inInv != null && inputSlot >= 0 && inputSlot < inInv.getSizeInventory()) {
             ItemStack inStack = inInv.getStackInSlot(inputSlot);
             if (inStack != null) {
                 if (inventory[0] == null) {
-                    // Internal empty → pull the whole stack
-                    inventory[0] = inInv.decrStackSize(inputSlot, inStack.stackSize);
+                    // Internal empty → take 1 item
+                    inventory[0] = inInv.decrStackSize(inputSlot, 1);
                     markDirty();
                 } else if (inventory[0].isItemEqual(inStack) &&
-                           ItemStack.areItemStackTagsEqual(inventory[0], inStack)) {
-                    // Same item → merge as much as possible
-                    int max = Math.min(inventory[0].getMaxStackSize(), getInventoryStackLimit());
-                    int canAdd = max - inventory[0].stackSize;
-                    if (canAdd > 0) {
-                        int take = Math.min(canAdd, inStack.stackSize);
-                        inventory[0].stackSize += take;
-                        inInv.decrStackSize(inputSlot, take);
-                        markDirty();
-                    }
+                           ItemStack.areItemStackTagsEqual(inventory[0], inStack) &&
+                           inventory[0].stackSize < Math.min(inventory[0].getMaxStackSize(), getInventoryStackLimit())) {
+                    // Same item → take 1 item if there is room
+                    inInv.decrStackSize(inputSlot, 1);
+                    inventory[0].stackSize += 1;
+                    markDirty();
                 }
             }
         }
 
-        // Push to output side
+        // --- Push to output side ---
         if (inventory[0] != null) {
             IInventory outInv = getAdjacentInventory(outputSide);
             if (outInv != null) {
@@ -58,6 +54,7 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             }
         }
     }
+
 
     // --- Helper: Get adjacent inventory by side ---
     private IInventory getAdjacentInventory(int side) {
