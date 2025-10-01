@@ -3,6 +3,8 @@ package jonius7.itemmover.blocks;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.Packet;
+import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Facing;
 
@@ -14,7 +16,7 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     // --- Configurable fields ---
     private int inputSlot = 0;
     private int outputSlot = 0;
-    private int inputSide = 2;  // 0=DOWN,1=UP,2=NORTH,3=SOUTH,4=WEST,5=EAST
+    private int inputSide = 2;
     private int outputSide = 3;
 
     // --- Update each tick ---
@@ -49,14 +51,42 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
                 int slot = Math.min(outputSlot, outInv.getSizeInventory() - 1);
                 if (slot >= 0) {
                     inventory[0] = insertIntoInventorySlot(outInv, slot, inventory[0]);
+
+                    // --- Option A: Force block update so GUI refreshes ---
+                    if (outInv instanceof TileEntity) {
+                        ((TileEntity) outInv).markDirty();
+                        worldObj.markBlockForUpdate(
+                            ((TileEntity) outInv).xCoord,
+                            ((TileEntity) outInv).yCoord,
+                            ((TileEntity) outInv).zCoord
+                        );
+                    }
+
                     markDirty();
                 }
             }
         }
     }
 
+    // --- TileEntity sync ---
+    @Override
+    public Packet getDescriptionPacket() {
+        NBTTagCompound tag = new NBTTagCompound();
+        writeToNBT(tag);
+        return new S35PacketUpdateTileEntity(xCoord, yCoord, zCoord, 1, tag);
+    }
 
-    // --- Helper: Get adjacent inventory by side ---
+    @Override
+    public void onDataPacket(net.minecraft.network.NetworkManager net, S35PacketUpdateTileEntity pkt) {
+        readFromNBT(pkt.func_148857_g());
+    }
+
+    private void sendUpdatePacket() {
+        if (!worldObj.isRemote)
+            worldObj.markBlockForUpdate(xCoord, yCoord, zCoord);
+    }
+
+    // --- Helpers ---
     private IInventory getAdjacentInventory(int side) {
         int x = xCoord + Facing.offsetsXForSide[side];
         int y = yCoord + (side == 0 ? -1 : side == 1 ? 1 : 0);
@@ -65,74 +95,40 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         return te instanceof IInventory ? (IInventory) te : null;
     }
 
-    // --- Helper: Insert into internal inventory ---
-    private void insertIntoInternal(ItemStack stack) {
-        if (inventory[0] == null) {
-            inventory[0] = stack;
-        } else if (inventory[0].isItemEqual(stack) && ItemStack.areItemStackTagsEqual(inventory[0], stack)) {
-            int max = Math.min(inventory[0].getMaxStackSize(), getInventoryStackLimit());
-            int newSize = inventory[0].stackSize + stack.stackSize;
-            if (newSize <= max) {
-                inventory[0].stackSize = newSize;
-            } else {
-                inventory[0].stackSize = max;
-                stack.stackSize = newSize - max;
-            }
-        }
-        markDirty();
-    }
-
-    /**
-     * Tries to insert the given stack into the specified slot of the inventory.
-     * Merges if possible, leaves leftover in the returned ItemStack.
-     *
-     * @param inv   The target inventory
-     * @param slot  The target slot
-     * @param stack The stack to insert
-     * @return The leftover stack (null if completely inserted)
-     */
     private ItemStack insertIntoInventorySlot(IInventory inv, int slot, ItemStack stack) {
         if (stack == null || slot < 0 || slot >= inv.getSizeInventory()) return stack;
 
         ItemStack target = inv.getStackInSlot(slot);
 
-        // Empty slot → insert completely
         if (target == null) {
             inv.setInventorySlotContents(slot, stack);
             return null;
         }
 
-        // Same item & NBT → merge
         if (target.isItemEqual(stack) && ItemStack.areItemStackTagsEqual(target, stack)) {
             int max = Math.min(target.getMaxStackSize(), inv.getInventoryStackLimit());
             int newSize = target.stackSize + stack.stackSize;
-
             if (newSize <= max) {
                 target.stackSize = newSize;
-                return null; // completely inserted
+                return null;
             } else {
                 target.stackSize = max;
-                stack.stackSize = newSize - max; // leftover
+                stack.stackSize = newSize - max;
                 return stack;
             }
         }
 
-        // Different item → cannot insert
         return stack;
     }
-    
-    // --- Helper: get max valid slot for a given side ---
+
     public int getMaxSlot(int side) {
         IInventory inv = getAdjacentInventory(side);
         return inv != null ? Math.max(inv.getSizeInventory() - 1, 0) : 0;
     }
 
-    // --- IInventory implementation ---
-    @Override
-    public int getSizeInventory() { return inventory.length; }
-    
-    @Override
-    public ItemStack getStackInSlot(int slot) { return inventory[slot]; }
+    // --- IInventory ---
+    @Override public int getSizeInventory() { return inventory.length; }
+    @Override public ItemStack getStackInSlot(int slot) { return inventory[slot]; }
 
     @Override
     public ItemStack decrStackSize(int slot, int amount) {
@@ -142,11 +138,13 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
                 itemstack = inventory[slot];
                 inventory[slot] = null;
                 markDirty();
+                sendUpdatePacket();
                 return itemstack;
             } else {
                 itemstack = inventory[slot].splitStack(amount);
                 if (inventory[slot].stackSize == 0) inventory[slot] = null;
                 markDirty();
+                sendUpdatePacket();
                 return itemstack;
             }
         }
@@ -160,28 +158,21 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             stack.stackSize = getInventoryStackLimit();
         }
         markDirty();
+        sendUpdatePacket();
     }
 
-    @Override
-    public String getInventoryName() { return "container.itemMover"; }
-
-    @Override
-    public boolean hasCustomInventoryName() { return false; }
-
-    @Override
-    public int getInventoryStackLimit() { return 64; }
-
-    @Override
-    public boolean isUseableByPlayer(net.minecraft.entity.player.EntityPlayer player) {
+    @Override public String getInventoryName() { return "container.itemMover"; }
+    @Override public boolean hasCustomInventoryName() { return false; }
+    @Override public int getInventoryStackLimit() { return 64; }
+    @Override public boolean isUseableByPlayer(net.minecraft.entity.player.EntityPlayer player) {
         return worldObj.getTileEntity(xCoord, yCoord, zCoord) == this &&
-                player.getDistanceSq(xCoord + 0.5, yCoord + 0.5, zCoord + 0.5) <= 64;
+               player.getDistanceSq(xCoord + 0.5, yCoord + 0.5, zCoord + 0.5) <= 64;
     }
 
     @Override public void openInventory() {}
     @Override public void closeInventory() {}
     @Override public boolean isItemValidForSlot(int slot, ItemStack stack) { return true; }
-    @Override
-    public ItemStack getStackInSlotOnClosing(int slot) {
+    @Override public ItemStack getStackInSlotOnClosing(int slot) {
         if (inventory[slot] != null) {
             ItemStack stack = inventory[slot];
             inventory[slot] = null;
@@ -192,18 +183,15 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
 
     // --- Config getters/setters ---
     public int getInputSlot() { return inputSlot; }
-    public void setInputSlot(int slot) { inputSlot = slot; markDirty(); }
-
+    public void setInputSlot(int slot) { inputSlot = slot; markDirty(); sendUpdatePacket(); }
     public int getOutputSlot() { return outputSlot; }
-    public void setOutputSlot(int slot) { outputSlot = slot; markDirty(); }
-
+    public void setOutputSlot(int slot) { outputSlot = slot; markDirty(); sendUpdatePacket(); }
     public int getInputSide() { return inputSide; }
-    public void setInputSide(int side) { inputSide = side; markDirty(); }
-
+    public void setInputSide(int side) { inputSide = side; markDirty(); sendUpdatePacket(); }
     public int getOutputSide() { return outputSide; }
-    public void setOutputSide(int side) { outputSide = side; markDirty(); }
+    public void setOutputSide(int side) { outputSide = side; markDirty(); sendUpdatePacket(); }
 
-    // --- NBT save/load ---
+    // --- NBT ---
     @Override
     public void writeToNBT(NBTTagCompound tag) {
         super.writeToNBT(tag);
@@ -230,7 +218,7 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         }
     }
 
-    // --- Side names helper ---
+    // --- Side helper ---
     public static String getSideName(int side) {
         switch (side) {
             case 0: return "DOWN";

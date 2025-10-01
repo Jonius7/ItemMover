@@ -15,7 +15,12 @@ public class BlockItemMover extends BlockContainer {
         setHardness(2.0F);
         setCreativeTab(jonius7.itemmover.ItemMover.tabItemMover);
     }
-        
+    
+    @Override
+    public boolean hasTileEntity(int metadata) {
+        return true;
+    }
+    
     @Override
     public TileEntity createNewTileEntity(World world, int meta) {
         return new TileEntityItemMover();
