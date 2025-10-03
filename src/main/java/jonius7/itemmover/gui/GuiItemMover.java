@@ -96,7 +96,7 @@ public class GuiItemMover extends GuiContainer {
     protected void actionPerformed(GuiButton button) {
     	int id = button.id;
         if (id >= 100 && id < 109) {
-            int slotIndex = id - 100;
+            //int slotIndex = id - 100;
             // Do something with the ghost slot at slotIndex
             //tile.cycleSideForSlot(slotIndex); // implement logic in TileEntity
         }
