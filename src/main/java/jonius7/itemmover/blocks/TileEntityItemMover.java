@@ -11,7 +11,7 @@ import net.minecraft.util.Facing;
 public class TileEntityItemMover extends TileEntity implements IInventory {
 
     // --- Internal inventory ---
-    private ItemStack[] inventory = new ItemStack[1];
+    private ItemStack[] inventory = new ItemStack[10];
 
     // --- Configurable fields ---
     private int inputSlot = 0;
@@ -61,7 +61,6 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
                             ((TileEntity) outInv).zCoord
                         );
                     }
-
                     markDirty();
                 }
             }
@@ -97,7 +96,6 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
 
     private ItemStack insertIntoInventorySlot(IInventory inv, int slot, ItemStack stack) {
         if (stack == null || slot < 0 || slot >= inv.getSizeInventory()) return stack;
-
         ItemStack target = inv.getStackInSlot(slot);
 
         if (target == null) {

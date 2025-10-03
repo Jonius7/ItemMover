@@ -7,18 +7,34 @@ import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 
+/**
+ * Container for the ItemMover block.
+ * Has 9 ghost slots for filtering, 1 real internal slot, and player inventory.
+ */
 public class ContainerItemMover extends Container {
 
-    private TileEntityItemMover tile;
+    private final TileEntityItemMover tile;
 
     public ContainerItemMover(InventoryPlayer playerInv, TileEntityItemMover tile) {
         this.tile = tile;
 
-        // --- ItemMover internal inventory ---
-        //this.addSlotToContainer(new Slot(tile, 0, 8, 35));
-        this.addSlotToContainer(new SlotGhost(tile, 0, 8, 35));
-        
-        
+        // --- Ghost slots (3x3 grid) ---
+        int startX = 8;
+        int startY = 35;
+        int spacing = 32;
+
+        for (int i = 0; i < 9; i++) {
+            int row = i / 3;
+            int col = i % 3;
+            int x = startX + col * spacing;
+            int y = startY + row * spacing;
+
+            this.addSlotToContainer(new SlotGhost(tile, i, x, y));
+        }
+
+        // --- Real internal slot (slot 9 in container indexing) ---
+        this.addSlotToContainer(new Slot(tile, 0, 140, 35));
+
         // --- Player Inventory (3 rows x 9 columns) ---
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {

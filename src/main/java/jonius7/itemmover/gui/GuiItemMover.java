@@ -34,7 +34,25 @@ public class GuiItemMover extends GuiContainer {
         super.initGui();
         int guiLeft = (this.width - this.xSize) / 2;
         int guiTop = (this.height - this.ySize) / 2;
+        
+        int startX = 26; // top-left X for grid
+        int startY = 35; // top-left Y for grid
+        int buttonWidth = 12;
+        int buttonHeight = 10;
+        int spacing = 32;
 
+        for (int i = 0; i < 9; i++) {
+            int row = i / 3;
+            int col = i % 3;
+            int x = guiLeft + startX + col * spacing;
+            int y = guiTop + startY + row * spacing;
+
+            GuiButton btn = new GuiButton(100 + i, x, y, buttonWidth, buttonHeight, "" + (i + 1));
+            this.buttonList.add(btn);
+        }
+        
+        
+        /*
         // --- Input Slot ---
         btnInputSlotUp = new GuiButton(0, guiLeft + 40, guiTop + 30, 20, 20, "+");
         btnInputSlotDown = new GuiButton(1, guiLeft + 60, guiTop + 30, 20, 20, "-");
@@ -59,7 +77,7 @@ public class GuiItemMover extends GuiContainer {
         buttonList.add(btnInputSideDown);
         buttonList.add(btnOutputSideUp);
         buttonList.add(btnOutputSideDown);
-        
+        */
         
         /*//simple 3x3 grid
         for (int i = 0; i < 9; i++) {
@@ -76,6 +94,14 @@ public class GuiItemMover extends GuiContainer {
 
     @Override
     protected void actionPerformed(GuiButton button) {
+    	int id = button.id;
+        if (id >= 100 && id < 109) {
+            int slotIndex = id - 100;
+            // Do something with the ghost slot at slotIndex
+            //tile.cycleSideForSlot(slotIndex); // implement logic in TileEntity
+        }
+    	
+    	/*
         // Always fetch fresh values from the TileEntity
         int inputSlot = tile.getInputSlot();
         int outputSlot = tile.getOutputSlot();
@@ -103,7 +129,7 @@ public class GuiItemMover extends GuiContainer {
         tile.setOutputSide(outputSide);
 
         // Send update to server
-        ItemMover.network.sendToServer(new jonius7.itemmover.network.PacketUpdateItemMover(tile));
+        ItemMover.network.sendToServer(new jonius7.itemmover.network.PacketUpdateItemMover(tile));*/
     }
 
     @Override
@@ -112,12 +138,14 @@ public class GuiItemMover extends GuiContainer {
 
         fontRendererObj.drawString("Item Mover", 8, 6, 0x404040);
 
+        /*
         // Always fetch fresh values from TileEntity
         fontRendererObj.drawString("Input Slot: " + tile.getInputSlot(), 40, 20, 0x404040);
         fontRendererObj.drawString("Output Slot: " + tile.getOutputSlot(), 40, 50, 0x404040);
 
         fontRendererObj.drawString("Input Side: " + TileEntityItemMover.getSideName(tile.getInputSide()), 110, 20, 0x404040);
         fontRendererObj.drawString("Output Side: " + TileEntityItemMover.getSideName(tile.getOutputSide()), 110, 50, 0x404040);
+    	*/
     }
 
     @Override
