@@ -89,41 +89,39 @@ public class ContainerItemMover extends Container {
                 if (held != null) {
                     if (current != null && current.isItemEqual(held) &&
                         ItemStack.areItemStackTagsEqual(current, held)) {
-                        // Increase count
-                        current.stackSize++;
+                        current.stackSize = Math.min(current.getMaxStackSize(), current.stackSize + 1);
                     } else {
-                        // Set new ghost item with count 1
                         ItemStack copy = held.copy();
                         copy.stackSize = 1;
                         slot.putStack(copy);
                     }
-                } else if (held == null) {
-                    // Clear on left-click empty hand
+                } else {
+                    // Left-click empty hand clears
                     slot.putStack(null);
                 }
             } else if (mouseButton == 1) { // Right click
                 if (held != null) {
                     if (current != null && current.isItemEqual(held) &&
                         ItemStack.areItemStackTagsEqual(current, held)) {
-                        // Decrease count
                         current.stackSize--;
                         if (current.stackSize <= 0) slot.putStack(null);
                     } else {
-                        // Set new ghost item with count 1
                         ItemStack copy = held.copy();
                         copy.stackSize = 1;
                         slot.putStack(copy);
                     }
-                } else if (held == null) {
-                    // Right-click empty hand also clears
+                } else {
+                    // Right-click empty hand clears
                     slot.putStack(null);
                 }
             }
 
-            return null; // Don't do normal slotClick processing
+            // Important: tell the container the held stack didn't change
+            return held;
         }
 
         // Normal slotClick for real slots
         return super.slotClick(slotId, mouseButton, modifier, player);
     }
+
 }
