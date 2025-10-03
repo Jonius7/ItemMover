@@ -25,8 +25,8 @@ public class GuiItemMover extends GuiContainer {
     public GuiItemMover(InventoryPlayer playerInv, TileEntityItemMover tile) {
         super(new ContainerItemMover(playerInv, tile));
         this.tile = tile;
-        this.xSize = 176;
-        this.ySize = 166;
+        this.xSize = 256;
+        this.ySize = 256;
     }
 
     @Override
@@ -59,6 +59,19 @@ public class GuiItemMover extends GuiContainer {
         buttonList.add(btnInputSideDown);
         buttonList.add(btnOutputSideUp);
         buttonList.add(btnOutputSideDown);
+        
+        
+        /*//simple 3x3 grid
+        for (int i = 0; i < 9; i++) {
+        	int row = i / 3;
+        	int col = i % 3;
+        	
+        	int x = guiLeft + 40 + col * 20;
+        	int y = guiTop + 90 + row * 20;
+        	GuiButton btn = new GuiButton(i + 8, x, y, 20, 20, "" + (i + 1));
+        	buttonList.add(btn);
+        }
+        */
     }
 
     @Override

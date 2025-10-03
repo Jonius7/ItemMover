@@ -14,22 +14,24 @@ public class ContainerItemMover extends Container {
     public ContainerItemMover(InventoryPlayer playerInv, TileEntityItemMover tile) {
         this.tile = tile;
 
-        // --- TileEntity internal slot (single slot) ---
-        this.addSlotToContainer(new Slot(tile, 0, 8, 35));
-
+        // --- ItemMover internal inventory ---
+        //this.addSlotToContainer(new Slot(tile, 0, 8, 35));
+        this.addSlotToContainer(new SlotGhost(tile, 0, 8, 35));
+        
+        
         // --- Player Inventory (3 rows x 9 columns) ---
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                int x = 8 + col * 18;
-                int y = 84 + row * 18;
+                int x = 8 + 40 + col * 18;
+                int y = 84 + 90 + row * 18;
                 this.addSlotToContainer(new Slot(playerInv, col + row * 9 + 9, x, y));
             }
         }
 
         // --- Player Hotbar (1 row x 9 columns) ---
         for (int col = 0; col < 9; col++) {
-            int x = 8 + col * 18;
-            int y = 142;
+            int x = 8 + 40 + col * 18;
+            int y = 142 + 90;
             this.addSlotToContainer(new Slot(playerInv, col, x, y));
         }
     }

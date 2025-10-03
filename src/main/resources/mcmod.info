@@ -3,7 +3,7 @@
   "modid": "itemmover",
   "name": "Item Mover",
   "description": "Adds an item mover block that can move items between adjacent blocks.",
-  "version": "0.2",
+  "version": "0.3-pre",
   "mcversion": "1.7.10",
   "credits": "",
   "authorList": ["jonius7"],
