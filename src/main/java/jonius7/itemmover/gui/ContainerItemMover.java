@@ -14,9 +14,18 @@ import net.minecraft.item.ItemStack;
 public class ContainerItemMover extends Container {
 
     private final TileEntityItemMover tile;
+    
+    public SlotGhost[] ghostPullSlots;
+    public SlotGhost[] ghostPushSlots;
 
     public ContainerItemMover(InventoryPlayer playerInv, TileEntityItemMover tile) {
         this.tile = tile;
+        
+        int pullSize = tile.getGhostPull().length;
+        int pushSize = tile.getGhostPush().length;
+
+        ghostPullSlots = new SlotGhost[pullSize];
+        ghostPushSlots = new SlotGhost[pushSize];
 
         // --- Pull Ghost slots (3x3 grid) ---
         int pullStartX = 8;
@@ -29,8 +38,10 @@ public class ContainerItemMover extends Container {
             int col = i % 3;
             int x = pullStartX + col * pullSpacingX;
             int y = pullStartY + row * pullSpacingY;
-
-            this.addSlotToContainer(new SlotGhostPull(tile.getPullGhostInventory(), i, x, y));
+            
+            SlotGhostPull slot = new SlotGhostPull(tile.getPullGhostInventory(), i, x, y);
+            this.addSlotToContainer(slot);
+            ghostPullSlots[i] = slot;
         }
         
         // --- Push Ghost slots (3x3 grid) ---
@@ -45,7 +56,9 @@ public class ContainerItemMover extends Container {
             int x = pushStartX + col * pushSpacingX;
             int y = pushStartY + row * pushSpacingY;
 
-            this.addSlotToContainer(new SlotGhostPush(tile.getPushGhostInventory(), i, x, y));
+            SlotGhostPush slot = new SlotGhostPush(tile.getPushGhostInventory(), i, x, y);
+            this.addSlotToContainer(slot);
+            ghostPushSlots[i] = slot;
         }
 
      // --- Real internal slots (18 slots above player inventory) ---

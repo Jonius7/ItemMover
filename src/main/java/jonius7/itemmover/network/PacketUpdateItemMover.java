@@ -1,10 +1,14 @@
 package jonius7.itemmover.network;
 
+import cpw.mods.fml.common.network.ByteBufUtils;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
 import jonius7.itemmover.blocks.TileEntityItemMover;
+import jonius7.itemmover.gui.GuiItemMover;
+import net.minecraft.client.Minecraft;
+import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
@@ -13,6 +17,8 @@ public class PacketUpdateItemMover implements IMessage {
     public int x, y, z;
     public int inputSlot, outputSlot;
     public int inputSide, outputSide;
+    private ItemStack[] ghostPull;
+    private ItemStack[] ghostPush;
 
     // --- Empty constructor required ---
     public PacketUpdateItemMover() {}
@@ -26,6 +32,8 @@ public class PacketUpdateItemMover implements IMessage {
         //this.outputSlot = te.getOutputSlot();
         this.inputSide = te.getInputSide();
         this.outputSide = te.getOutputSide();
+        this.setGhostPull(te.getGhostPull());
+        this.setGhostPush(te.getGhostPush());
     }
 
     @Override
@@ -33,10 +41,20 @@ public class PacketUpdateItemMover implements IMessage {
         x = buf.readInt();
         y = buf.readInt();
         z = buf.readInt();
-        inputSlot = buf.readInt();
-        outputSlot = buf.readInt();
         inputSide = buf.readInt();
         outputSide = buf.readInt();
+        
+        int pullLen = buf.readInt();
+        setGhostPull(new ItemStack[pullLen]);
+        for (int i = 0; i < pullLen; i++) {
+            getGhostPull()[i] = ByteBufUtils.readItemStack(buf);
+        }
+
+        int pushLen = buf.readInt();
+        setGhostPush(new ItemStack[pushLen]);
+        for (int i = 0; i < pushLen; i++) {
+            getGhostPush()[i] = ByteBufUtils.readItemStack(buf);
+        }
     }
 
     @Override
@@ -44,26 +62,72 @@ public class PacketUpdateItemMover implements IMessage {
         buf.writeInt(x);
         buf.writeInt(y);
         buf.writeInt(z);
-        buf.writeInt(inputSlot);
-        buf.writeInt(outputSlot);
         buf.writeInt(inputSide);
         buf.writeInt(outputSide);
-    }
+        
+        // Write pull ghost slots
+        buf.writeInt(getGhostPull().length);
+        for (ItemStack stack : getGhostPull()) {
+            ByteBufUtils.writeItemStack(buf, stack);
+        }
 
-    // --- Handler to apply packet to server tile entity ---
-    public static class Handler implements IMessageHandler<PacketUpdateItemMover, IMessage> {
-        @Override
-        public IMessage onMessage(PacketUpdateItemMover message, MessageContext ctx) {
-            World world = ctx.getServerHandler().playerEntity.worldObj;
-            TileEntity te = world.getTileEntity(message.x, message.y, message.z);
-            if (te instanceof TileEntityItemMover) {
-                TileEntityItemMover mover = (TileEntityItemMover) te;
-                //mover.setInputSlot(message.inputSlot);
-                //mover.setOutputSlot(message.outputSlot);
-                //mover.setInputSide(message.inputSide);
-                //mover.setOutputSide(message.outputSide);
-            }
-            return null; // no response needed
+        // Write push ghost slots
+        buf.writeInt(getGhostPush().length);
+        for (ItemStack stack : getGhostPush()) {
+            ByteBufUtils.writeItemStack(buf, stack);
         }
     }
+
+    /**
+	 * @return the ghostPull
+	 */
+	public ItemStack[] getGhostPull() {
+		return ghostPull;
+	}
+
+	/**
+	 * @param ghostPull the ghostPull to set
+	 */
+	public void setGhostPull(ItemStack[] ghostPull) {
+		this.ghostPull = ghostPull;
+	}
+
+	/**
+	 * @return the ghostPush
+	 */
+	public ItemStack[] getGhostPush() {
+		return ghostPush;
+	}
+
+	/**
+	 * @param ghostPush the ghostPush to set
+	 */
+	public void setGhostPush(ItemStack[] ghostPush) {
+		this.ghostPush = ghostPush;
+	}
+
+	public static class Handler implements IMessageHandler<PacketUpdateItemMover, IMessage> {
+	    @Override
+	    public IMessage onMessage(PacketUpdateItemMover message, MessageContext ctx) {
+	        World world = Minecraft.getMinecraft().theWorld;
+	        if (world == null) return null;
+
+	        TileEntity te = world.getTileEntity(message.x, message.y, message.z);
+	        if (te instanceof TileEntityItemMover) {
+	            TileEntityItemMover mover = (TileEntityItemMover) te;
+
+	            // Copy arrays to avoid reference issues
+	            mover.setGhostPull(message.getGhostPull());
+	            mover.setGhostPush(message.getGhostPush());
+
+	            // Refresh GUI if open
+	            if (Minecraft.getMinecraft().currentScreen instanceof GuiItemMover) {
+	                GuiItemMover gui = (GuiItemMover) Minecraft.getMinecraft().currentScreen;
+	                gui.updateGhostSlots(); // <- this updates the SlotGhosts from TileEntity
+	            }
+	        }
+
+	        return null; // no response needed
+	    }
+	}    
 }

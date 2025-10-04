@@ -2,7 +2,6 @@ package jonius7.itemmover.gui;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import jonius7.itemmover.ItemMover;
 import jonius7.itemmover.blocks.TileEntityItemMover;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.audio.PositionedSoundRecord;
@@ -29,6 +28,20 @@ public class GuiItemMover extends GuiContainer {
         this.tile = tile;
         this.xSize = 256;
         this.ySize = 256;
+    }
+    
+ // Call this whenever ghost slots change
+    public void updateGhostSlots() {
+        ContainerItemMover container = (ContainerItemMover) this.inventorySlots;
+        for (int i = 0; i < container.ghostPullSlots.length; i++) {
+            SlotGhost slot = container.ghostPullSlots[i];
+            slot.putStack(tile.getGhostPull()[i]);
+        }
+
+        for (int i = 0; i < container.ghostPushSlots.length; i++) {
+            SlotGhost slot = container.ghostPushSlots[i];
+            slot.putStack(tile.getGhostPush()[i]);
+        }
     }
 
     @Override
