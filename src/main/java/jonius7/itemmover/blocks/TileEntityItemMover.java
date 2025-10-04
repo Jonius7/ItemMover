@@ -311,38 +311,40 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     public void readFromNBT(NBTTagCompound compound) {
         super.readFromNBT(compound);
 
-        // --- Config ---
-        //inputSlot = tag.getInteger("InputSlot");
-        //outputSlot = tag.getInteger("OutputSlot");
+        // Initialize arrays if null
+        if (ghostPull == null) ghostPull = new ItemStack[9]; // adjust size
+        if (ghostPush == null) ghostPush = new ItemStack[9];
+        if (internalInventory == null) internalInventory = new ItemStack[internalInventory.length]; // your size
+
+        // Load sides
         if (compound.hasKey("InputSide")) inputSide = compound.getInteger("InputSide");
         if (compound.hasKey("OutputSide")) outputSide = compound.getInteger("OutputSide");
 
-        // --- Internal inventory ---
+        // Load internal inventory
         for (int i = 0; i < internalInventory.length; i++) {
-            if (compound.hasKey("InternalSlot" + i)) {
+            if (compound.hasKey("InternalSlot" + i))
                 internalInventory[i] = ItemStack.loadItemStackFromNBT(compound.getCompoundTag("InternalSlot" + i));
-            } else {
-                internalInventory[i] = null;
-            }
+            else internalInventory[i] = null;
         }
 
-        NBTTagList pullList = compound.getTagList("GhostPull", 10); // 10 = compound
-        setGhostPull(new ItemStack[getGhostPull().length]);
+        // Load ghost pull
+        NBTTagList pullList = compound.getTagList("GhostPull", 10);
         for (int i = 0; i < pullList.tagCount(); i++) {
             NBTTagCompound tag = pullList.getCompoundTagAt(i);
             int slot = tag.getByte("Slot") & 255;
-            getGhostPull()[slot] = ItemStack.loadItemStackFromNBT(tag);
+            if (slot >= 0 && slot < ghostPull.length)
+                ghostPull[slot] = ItemStack.loadItemStackFromNBT(tag);
         }
 
+        // Load ghost push
         NBTTagList pushList = compound.getTagList("GhostPush", 10);
-        setGhostPush(new ItemStack[getGhostPush().length]);
         for (int i = 0; i < pushList.tagCount(); i++) {
             NBTTagCompound tag = pushList.getCompoundTagAt(i);
             int slot = tag.getByte("Slot") & 255;
-            getGhostPush()[slot] = ItemStack.loadItemStackFromNBT(tag);
+            if (slot >= 0 && slot < ghostPush.length)
+                ghostPush[slot] = ItemStack.loadItemStackFromNBT(tag);
         }
     }
-
 
     // --- Config getters/setters ---
     /*
