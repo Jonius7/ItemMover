@@ -7,8 +7,6 @@ import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -234,8 +232,8 @@ public class GuiItemMover extends GuiContainer {
         fontRendererObj.drawString("Input Side: " + TileEntityItemMover.getSideName(tile.getInputSide()), 110, 20, 0x404040);
         fontRendererObj.drawString("Output Side: " + TileEntityItemMover.getSideName(tile.getOutputSide()), 110, 50, 0x404040);
     	*/
-        fontRendererObj.drawString("Push", 10, 20, 0x404040);
-        fontRendererObj.drawString("Pull", 137, 20, 0x404040);
+        fontRendererObj.drawString("Pull", 10, 20, 0x404040);
+        fontRendererObj.drawString("Push", 137, 20, 0x404040);
     }
 
     @Override

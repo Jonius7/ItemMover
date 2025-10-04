@@ -15,7 +15,6 @@ import net.minecraft.world.World;
 public class PacketUpdateItemMover implements IMessage {
 
     public int x, y, z;
-    public int inputSlot, outputSlot;
     public int inputSide, outputSide;
     private ItemStack[] ghostPull;
     private ItemStack[] ghostPush;
@@ -119,6 +118,9 @@ public class PacketUpdateItemMover implements IMessage {
 	            // Copy arrays to avoid reference issues
 	            mover.setGhostPull(message.getGhostPull());
 	            mover.setGhostPush(message.getGhostPush());
+	            
+	            mover.setInputSide(message.getInputSide());
+	            mover.setOutputSide(message.getOutputSide());
 
 	            // Refresh GUI if open
 	            if (Minecraft.getMinecraft().currentScreen instanceof GuiItemMover) {
@@ -129,5 +131,8 @@ public class PacketUpdateItemMover implements IMessage {
 
 	        return null; // no response needed
 	    }
-	}    
+	}
+	
+	public int getInputSide() { return inputSide; }
+	public int getOutputSide() { return outputSide; }
 }

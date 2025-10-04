@@ -314,8 +314,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         // --- Config ---
         //inputSlot = tag.getInteger("InputSlot");
         //outputSlot = tag.getInteger("OutputSlot");
-        inputSide = compound.getInteger("InputSide");
-        outputSide = compound.getInteger("OutputSide");
+        if (compound.hasKey("InputSide")) inputSide = compound.getInteger("InputSide");
+        if (compound.hasKey("OutputSide")) outputSide = compound.getInteger("OutputSide");
 
         // --- Internal inventory ---
         for (int i = 0; i < internalInventory.length; i++) {
@@ -354,17 +354,23 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     */
     
     public int getInputSide() { return inputSide; }
-    //public void setInputSide(int side) { inputSide = side; markDirty(); sendUpdatePacket(); }
-    public void cycleInputSide(boolean forward) {
-        inputSide = (inputSide + (forward ? 1 : -1) + 6) % 6;
-        markDirty();
-    }
-
     public int getOutputSide() { return outputSide; }
-    //public void setOutputSide(int side) { outputSide = side; markDirty(); sendUpdatePacket(); }
-    public void cycleOutputSide(boolean forward) {
-        outputSide = (outputSide + (forward ? 1 : -1) + 6) % 6;
+    
+    public void setInputSide(int side) {
+        inputSide = (side + 6) % 6; // wrap 0-5
         markDirty();
+        sendUpdatePacket(); // optional, only if you want instant GUI update
+    }
+    public void setOutputSide(int side) {
+        outputSide = (side + 6) % 6;
+        markDirty();
+        sendUpdatePacket();
+    }
+    public void cycleInputSide(boolean forward) {
+        setInputSide(inputSide + (forward ? 1 : -1));
+    }
+    public void cycleOutputSide(boolean forward) {
+        setOutputSide(outputSide + (forward ? 1 : -1));
     }
 
 	public ItemStack[] getGhostPull() {

@@ -15,11 +15,35 @@ public class ContainerItemMover extends Container {
 
     private final TileEntityItemMover tile;
     
+    private SimpleInventoryGhost ghostPullInv;
+    private SimpleInventoryGhost ghostPushInv;
+    
     public SlotGhost[] ghostPullSlots;
     public SlotGhost[] ghostPushSlots;
 
     public ContainerItemMover(InventoryPlayer playerInv, TileEntityItemMover tile) {
         this.tile = tile;
+        
+        //System.out.println("PULL LENGTH: " + tile.getGhostPull().length);
+        //System.out.println("PUSH LENGTH: " + tile.getGhostPush().length);
+        ghostPullInv = new SimpleInventoryGhost(tile.getGhostPull().length);
+        ghostPushInv = new SimpleInventoryGhost(tile.getGhostPush().length);
+        
+        ItemStack[] ghostPullArray = tile.getGhostPull();
+        if (ghostPullArray != null) {
+            for (int i = 0; i < ghostPullInv.getSizeInventory(); i++) {
+                ItemStack stack = i < ghostPullArray.length ? ghostPullArray[i] : null;
+                if (stack != null) ghostPullInv.setInventorySlotContents(i, stack);
+            }
+        }
+
+        ItemStack[] ghostPushArray = tile.getGhostPush();
+        if (ghostPushArray != null) {
+            for (int i = 0; i < ghostPushInv.getSizeInventory(); i++) {
+                ItemStack stack = i < ghostPushArray.length ? ghostPushArray[i] : null;
+                if (stack != null) ghostPushInv.setInventorySlotContents(i, stack);
+            }
+        }
         
         int pullSize = tile.getGhostPull().length;
         int pushSize = tile.getGhostPush().length;
@@ -32,16 +56,16 @@ public class ContainerItemMover extends Container {
         int pullStartY = 45;
         int pullSpacingX = 32;
         int pullSpacingY = 20;
-
+        
         for (int i = 0; i < 9; i++) {
             int row = i / 3;
             int col = i % 3;
             int x = pullStartX + col * pullSpacingX;
             int y = pullStartY + row * pullSpacingY;
             
-            SlotGhostPull slot = new SlotGhostPull(tile.getPullGhostInventory(), i, x, y);
+            SlotGhostPull slot = new SlotGhostPull(ghostPullInv, i, x, y, tile);
             this.addSlotToContainer(slot);
-            ghostPullSlots[i] = slot;
+            //ghostPullSlots[i] = slot;
         }
         
         // --- Push Ghost slots (3x3 grid) ---
@@ -49,16 +73,16 @@ public class ContainerItemMover extends Container {
         int pushStartY = 45;
         int pushSpacingX = 32;
         int pushSpacingY = 20;
-
+        
         for (int i = 0; i < 9; i++) {
             int row = i / 3;
             int col = i % 3;
             int x = pushStartX + col * pushSpacingX;
             int y = pushStartY + row * pushSpacingY;
 
-            SlotGhostPush slot = new SlotGhostPush(tile.getPushGhostInventory(), i, x, y);
+            SlotGhostPush slot = new SlotGhostPush(ghostPushInv, i, x, y, tile);
             this.addSlotToContainer(slot);
-            ghostPushSlots[i] = slot;
+            //ghostPushSlots[i] = slot;
         }
 
      // --- Real internal slots (18 slots above player inventory) ---
@@ -155,29 +179,33 @@ public class ContainerItemMover extends Container {
                     if (current != null && current.isItemEqual(held) &&
                         ItemStack.areItemStackTagsEqual(current, held)) {
                         current.stackSize = Math.min(current.getMaxStackSize(), current.stackSize + 1);
+                        slot.putStack(current); // updates GUI + TileEntity automatically
                     } else {
                         ItemStack copy = held.copy();
                         copy.stackSize = 1;
-                        slot.putStack(copy);
+                        slot.putStack(copy); // updates GUI + TileEntity automatically
                     }
-                } else slot.putStack(null);
+                } else {
+                    slot.putStack(null); // clears slot and TileEntity
+                }
             } else if (mouseButton == 1) { // Right click
                 if (held != null) {
                     if (current != null && current.isItemEqual(held) &&
                         ItemStack.areItemStackTagsEqual(current, held)) {
                         current.stackSize--;
                         if (current.stackSize <= 0) slot.putStack(null);
+                        else slot.putStack(current);
                     } else {
                         ItemStack copy = held.copy();
                         copy.stackSize = 1;
                         slot.putStack(copy);
                     }
-                } else slot.putStack(null);
+                } else {
+                    slot.putStack(null);
+                }
             }
-
             return held;
         }
-
         return super.slotClick(slotId, mouseButton, modifier, player);
     }
     

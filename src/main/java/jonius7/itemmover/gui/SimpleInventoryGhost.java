@@ -20,15 +20,17 @@ public class SimpleInventoryGhost implements IInventory {
 
     @Override
     public ItemStack getStackInSlot(int index) {
+        if (index < 0 || index >= size) return null;
         return stacks[index];
     }
 
     @Override
     public void setInventorySlotContents(int index, ItemStack stack) {
-        // Only ever keep a *copy with size 1*
+        if (index < 0 || index >= size) return;
+
         if (stack != null) {
             ItemStack ghost = stack.copy();
-            ghost.stackSize = 1;
+            ghost.stackSize = Math.min(stack.stackSize, getInventoryStackLimit()); // keep stack size
             stacks[index] = ghost;
         } else {
             stacks[index] = null;
@@ -37,7 +39,8 @@ public class SimpleInventoryGhost implements IInventory {
 
     @Override
     public ItemStack decrStackSize(int index, int count) {
-        // Ghost slots aren’t real stacks → just clear
+        if (index < 0 || index >= size) return null;
+
         ItemStack ghost = stacks[index];
         stacks[index] = null;
         return ghost;
@@ -45,6 +48,8 @@ public class SimpleInventoryGhost implements IInventory {
 
     @Override
     public ItemStack getStackInSlotOnClosing(int index) {
+        if (index < 0 || index >= size) return null;
+
         ItemStack ghost = stacks[index];
         stacks[index] = null;
         return ghost;
@@ -62,7 +67,7 @@ public class SimpleInventoryGhost implements IInventory {
 
     @Override
     public int getInventoryStackLimit() {
-        return 1; // Always 1 for ghost
+        return 64;
     }
 
     @Override
