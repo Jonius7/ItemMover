@@ -5,11 +5,13 @@ import cpw.mods.fml.relauncher.SideOnly;
 import jonius7.itemmover.ItemMover;
 import jonius7.itemmover.blocks.TileEntityItemMover;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.common.util.ForgeDirection;
 
 @SideOnly(Side.CLIENT)
 public class GuiItemMover extends GuiContainer {
@@ -32,25 +34,44 @@ public class GuiItemMover extends GuiContainer {
     @Override
     public void initGui() {
         super.initGui();
+        this.buttonList.clear();
+        
         int guiLeft = (this.width - this.xSize) / 2;
         int guiTop = (this.height - this.ySize) / 2;
-        
-        int startX = 26; // top-left X for grid
-        int startY = 35; // top-left Y for grid
+
+        // Pull + Push Slot Buttons
+        int pullStartX = 26;
+        int pullStartY = 50;
+        int pushStartX = 153;
+        int pushStartY = 50;
         int buttonWidth = 12;
         int buttonHeight = 10;
-        int spacing = 32;
+        int spacingX = 32;
+        int spacingY = 20;
 
         for (int i = 0; i < 9; i++) {
             int row = i / 3;
             int col = i % 3;
-            int x = guiLeft + startX + col * spacing;
-            int y = guiTop + startY + row * spacing;
+            int x = guiLeft + pullStartX + col * spacingX;
+            int y = guiTop + pullStartY + row * spacingY;
 
             GuiButton btn = new GuiButton(100 + i, x, y, buttonWidth, buttonHeight, "" + (i + 1));
             this.buttonList.add(btn);
         }
         
+        for (int i = 0; i < 9; i++) {
+            int row = i / 3;
+            int col = i % 3;
+            int x = guiLeft + pushStartX + col * spacingX;
+            int y = guiTop + pushStartY + row * spacingY;
+
+            GuiButton btn = new GuiButton(109 + i, x, y, buttonWidth, buttonHeight, "" + (i + 1));
+            this.buttonList.add(btn);
+        }
+       
+        // Side Selection Buttons
+        this.buttonList.add(new GuiButton(0, guiLeft + 40, guiTop + 20, 60, 20, getSideName(tile.getInputSide())));
+        this.buttonList.add(new GuiButton(1, guiLeft + 167, guiTop + 20, 60, 20, getSideName(tile.getOutputSide())));
         
         /*
         // --- Input Slot ---
@@ -91,15 +112,69 @@ public class GuiItemMover extends GuiContainer {
         }
         */
     }
+    
+    private String getSideName(int side) {
+        return ForgeDirection.values()[side].name().toUpperCase();
+    }
+    
+    @Override
+    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+        // Check every button manually
+        for (Object obj : this.buttonList) {
+            GuiButton button = (GuiButton) obj;
 
+            if (button.mousePressed(this.mc, mouseX, mouseY)) {
+                if (mouseButton == 0) {
+                    // Left-click = default behavior
+                    this.actionPerformed(button);
+                    playButtonSound();
+                } else if (mouseButton == 1) {
+                    // Right-click = reverse logic
+                    handleRightClickButton(button);
+                    playButtonSound();
+                }
+                return; // stop processing further clicks
+            }
+        }
+
+        // Let other GUI elements (like slots) handle clicks normally
+        super.mouseClicked(mouseX, mouseY, mouseButton);
+    }
+
+    private void handleRightClickButton(GuiButton button) {
+        if (button.id == 0) {
+            tile.cycleInputSide(false); // backwards
+            button.displayString = getSideName(tile.getInputSide());
+        } else if (button.id == 1) {
+            tile.cycleOutputSide(false);
+            button.displayString = getSideName(tile.getOutputSide());
+        }
+    }  
+    
+    /** Play the standard GUI button press sound (1.7.10-friendly) */
+    private void playButtonSound() {
+        try {
+            // Common in 1.7.10 mappings:
+            mc.getSoundHandler().playSound(
+                PositionedSoundRecord.func_147674_a(new ResourceLocation("gui.button.press"), 1.0F)
+            );
+        } catch (Throwable t) {
+            // Fallback if mappings differ or method missing: play a simple player sound
+            if (mc.thePlayer != null) mc.thePlayer.playSound("random.click", 1.0F, 1.0F);
+        }
+    }
+    
     @Override
     protected void actionPerformed(GuiButton button) {
-    	int id = button.id;
-        if (id >= 100 && id < 109) {
-            //int slotIndex = id - 100;
-            // Do something with the ghost slot at slotIndex
-            //tile.cycleSideForSlot(slotIndex); // implement logic in TileEntity
+    	if (button.id == 0) {
+            tile.cycleInputSide(true); // backwards
+            button.displayString = getSideName(tile.getInputSide());
+        } else if (button.id == 1) {
+            tile.cycleOutputSide(true);
+            button.displayString = getSideName(tile.getOutputSide());
         }
+    	
+        //super.mouseClicked(mouseX, mouseY, mouseButton);
     	
     	/*
         // Always fetch fresh values from the TileEntity
@@ -146,6 +221,8 @@ public class GuiItemMover extends GuiContainer {
         fontRendererObj.drawString("Input Side: " + TileEntityItemMover.getSideName(tile.getInputSide()), 110, 20, 0x404040);
         fontRendererObj.drawString("Output Side: " + TileEntityItemMover.getSideName(tile.getOutputSide()), 110, 50, 0x404040);
     	*/
+        fontRendererObj.drawString("Push", 10, 20, 0x404040);
+        fontRendererObj.drawString("Pull", 137, 20, 0x404040);
     }
 
     @Override

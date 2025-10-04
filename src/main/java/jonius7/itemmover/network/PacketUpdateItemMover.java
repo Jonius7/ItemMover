@@ -22,8 +22,8 @@ public class PacketUpdateItemMover implements IMessage {
         this.x = te.xCoord;
         this.y = te.yCoord;
         this.z = te.zCoord;
-        this.inputSlot = te.getInputSlot();
-        this.outputSlot = te.getOutputSlot();
+        //this.inputSlot = te.getInputSlot();
+        //this.outputSlot = te.getOutputSlot();
         this.inputSide = te.getInputSide();
         this.outputSide = te.getOutputSide();
     }
@@ -58,10 +58,10 @@ public class PacketUpdateItemMover implements IMessage {
             TileEntity te = world.getTileEntity(message.x, message.y, message.z);
             if (te instanceof TileEntityItemMover) {
                 TileEntityItemMover mover = (TileEntityItemMover) te;
-                mover.setInputSlot(message.inputSlot);
-                mover.setOutputSlot(message.outputSlot);
-                mover.setInputSide(message.inputSide);
-                mover.setOutputSide(message.outputSide);
+                //mover.setInputSlot(message.inputSlot);
+                //mover.setOutputSlot(message.outputSlot);
+                //mover.setInputSide(message.inputSide);
+                //mover.setOutputSide(message.outputSide);
             }
             return null; // no response needed
         }

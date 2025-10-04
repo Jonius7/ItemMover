@@ -20,28 +20,30 @@ public class ContainerItemMover extends Container {
 
         // --- Pull Ghost slots (3x3 grid) ---
         int pullStartX = 8;
-        int pullStartY = 35;
-        int pullSpacing = 32;
+        int pullStartY = 45;
+        int pullSpacingX = 32;
+        int pullSpacingY = 20;
 
         for (int i = 0; i < 9; i++) {
             int row = i / 3;
             int col = i % 3;
-            int x = pullStartX + col * pullSpacing;
-            int y = pullStartY + row * pullSpacing;
+            int x = pullStartX + col * pullSpacingX;
+            int y = pullStartY + row * pullSpacingY;
 
             this.addSlotToContainer(new SlotGhostPull(tile.getPullGhostInventory(), i, x, y));
         }
         
         // --- Push Ghost slots (3x3 grid) ---
         int pushStartX = 135;
-        int pushStartY = 35;
-        int pushSpacing = 32;
+        int pushStartY = 45;
+        int pushSpacingX = 32;
+        int pushSpacingY = 20;
 
         for (int i = 0; i < 9; i++) {
             int row = i / 3;
             int col = i % 3;
-            int x = pushStartX + col * pushSpacing;
-            int y = pushStartY + row * pushSpacing;
+            int x = pushStartX + col * pushSpacingX;
+            int y = pushStartY + row * pushSpacingY;
 
             this.addSlotToContainer(new SlotGhostPush(tile.getPushGhostInventory(), i, x, y));
         }
@@ -165,4 +167,16 @@ public class ContainerItemMover extends Container {
 
         return super.slotClick(slotId, mouseButton, modifier, player);
     }
+    
+    @Override
+    public boolean enchantItem(EntityPlayer player, int action) {
+        if (action == 0) {
+            tile.cycleInputSide(true);
+        } else if (action == 1) {
+            tile.cycleOutputSide(true);
+        }
+        tile.markDirty();
+        return true;
+    }
+
 }

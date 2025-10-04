@@ -21,8 +21,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     private ItemStack[] internalInventory = new ItemStack[18]; // Real internal slots
 
     // --- Configurable fields ---
-    private int inputSlot = 0;
-    private int outputSlot = 0;
+    //private int inputSlot = 0;
+    //private int outputSlot = 0;
     private int inputSide = 2;
     private int outputSide = 3;
     
@@ -266,8 +266,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         super.writeToNBT(tag);
 
         // --- Config ---
-        tag.setInteger("InputSlot", inputSlot);
-        tag.setInteger("OutputSlot", outputSlot);
+        //tag.setInteger("InputSlot", inputSlot);
+        //tag.setInteger("OutputSlot", outputSlot);
         tag.setInteger("InputSide", inputSide);
         tag.setInteger("OutputSide", outputSide);
 
@@ -305,8 +305,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         super.readFromNBT(tag);
 
         // --- Config ---
-        inputSlot = tag.getInteger("InputSlot");
-        outputSlot = tag.getInteger("OutputSlot");
+        //inputSlot = tag.getInteger("InputSlot");
+        //outputSlot = tag.getInteger("OutputSlot");
         inputSide = tag.getInteger("InputSide");
         outputSide = tag.getInteger("OutputSide");
 
@@ -340,15 +340,25 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
 
 
     // --- Config getters/setters ---
+    /*
     public int getInputSlot() { return inputSlot; }
     public void setInputSlot(int slot) { inputSlot = slot; markDirty(); sendUpdatePacket(); }
 
     public int getOutputSlot() { return outputSlot; }
     public void setOutputSlot(int slot) { outputSlot = slot; markDirty(); sendUpdatePacket(); }
-
+    */
+    
     public int getInputSide() { return inputSide; }
-    public void setInputSide(int side) { inputSide = side; markDirty(); sendUpdatePacket(); }
+    //public void setInputSide(int side) { inputSide = side; markDirty(); sendUpdatePacket(); }
+    public void cycleInputSide(boolean forward) {
+        inputSide = (inputSide + (forward ? 1 : -1) + 6) % 6;
+        markDirty();
+    }
 
     public int getOutputSide() { return outputSide; }
-    public void setOutputSide(int side) { outputSide = side; markDirty(); sendUpdatePacket(); }
+    //public void setOutputSide(int side) { outputSide = side; markDirty(); sendUpdatePacket(); }
+    public void cycleOutputSide(boolean forward) {
+        outputSide = (outputSide + (forward ? 1 : -1) + 6) % 6;
+        markDirty();
+    }
 }
