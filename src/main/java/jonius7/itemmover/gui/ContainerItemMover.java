@@ -51,13 +51,13 @@ public class ContainerItemMover extends Container {
         ghostPullSlots = new SlotGhost[pullSize];
         ghostPushSlots = new SlotGhost[pushSize];
 
-        // --- Pull Ghost slots (3x3 grid) ---
+        // --- Pull Ghost slots (3x4 grid) ---
         int pullStartX = 8;
         int pullStartY = 45;
         int pullSpacingX = 32;
         int pullSpacingY = 20;
         
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 12; i++) {
             int row = i / 3;
             int col = i % 3;
             int x = pullStartX + col * pullSpacingX;
@@ -68,13 +68,13 @@ public class ContainerItemMover extends Container {
             //ghostPullSlots[i] = slot;
         }
         
-        // --- Push Ghost slots (3x3 grid) ---
+        // --- Push Ghost slots (3x4 grid) ---
         int pushStartX = 135;
         int pushStartY = 45;
         int pushSpacingX = 32;
         int pushSpacingY = 20;
         
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 12; i++) {
             int row = i / 3;
             int col = i % 3;
             int x = pushStartX + col * pushSpacingX;
@@ -135,12 +135,12 @@ public class ContainerItemMover extends Container {
             itemstack = stackInSlot.copy();
 
             int ghostPullStart = 0;
-            int ghostPullEnd = 9;
-            int ghostPushStart = 9;
-            int ghostPushEnd = 18;
-            int internalStart = 18;
-            int internalEnd = 36;
-            int playerStart = 36;
+            int ghostPullEnd = 12;
+            int ghostPushStart = 12;
+            int ghostPushEnd = 24;
+            int internalStart = 24;
+            int internalEnd = 42;
+            int playerStart = 42;
             int playerEnd = this.inventorySlots.size();
 
             // --- Internal slots -> player inventory ---

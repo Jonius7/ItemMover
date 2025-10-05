@@ -18,11 +18,6 @@ public class GuiItemMover extends GuiContainer {
     private static final ResourceLocation GUI_TEXTURE = new ResourceLocation("itemmover", "textures/gui/item_mover.png");
     private final TileEntityItemMover tile;
 
-    private GuiButton btnInputSlotUp, btnInputSlotDown;
-    private GuiButton btnOutputSlotUp, btnOutputSlotDown;
-    private GuiButton btnInputSideUp, btnInputSideDown;
-    private GuiButton btnOutputSideUp, btnOutputSideDown;
-
     public GuiItemMover(InventoryPlayer playerInv, TileEntityItemMover tile) {
         super(new ContainerItemMover(playerInv, tile));
         this.tile = tile;
@@ -62,7 +57,7 @@ public class GuiItemMover extends GuiContainer {
         int spacingX = 32;
         int spacingY = 20;
 
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 12; i++) {
             int row = i / 3;
             int col = i % 3;
             int x = guiLeft + pullStartX + col * spacingX;
@@ -72,13 +67,13 @@ public class GuiItemMover extends GuiContainer {
             this.buttonList.add(btn);
         }
         
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 12; i++) {
             int row = i / 3;
             int col = i % 3;
             int x = guiLeft + pushStartX + col * spacingX;
             int y = guiTop + pushStartY + row * spacingY;
 
-            GuiButton btn = new GuiButton(109 + i, x, y, buttonWidth, buttonHeight, "" + (i + 1));
+            GuiButton btn = new GuiButton(112 + i, x, y, buttonWidth, buttonHeight, "" + (i + 1));
             this.buttonList.add(btn);
         }
        

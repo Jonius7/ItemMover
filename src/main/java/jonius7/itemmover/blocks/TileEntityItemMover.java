@@ -28,8 +28,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     
     public TileEntityItemMover() {
     	super();
-        ghostPull = new ItemStack[9];
-        ghostPush = new ItemStack[9];
+        ghostPull = new ItemStack[12];
+        ghostPush = new ItemStack[12];
         internalInventory = new ItemStack[18];
     }
     /*
@@ -338,8 +338,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         super.readFromNBT(compound);
         //System.out.println("READ sides: " + inputSide + "," + outputSide);
         // Ensure arrays exist
-        if (ghostPull == null) ghostPull = new ItemStack[9];
-        if (ghostPush == null) ghostPush = new ItemStack[9];
+        if (ghostPull == null) ghostPull = new ItemStack[12];
+        if (ghostPush == null) ghostPush = new ItemStack[12];
         if (internalInventory == null) internalInventory = new ItemStack[18];
 
         if (compound.hasKey("InputSide")) {
