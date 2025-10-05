@@ -125,17 +125,11 @@ public class PacketUpdateItemMover implements IMessage {
 	            mover.setOutputSide(message.getOutputSide());
 	            
 	            mover.setGhostPull(message.getGhostPull());
-	            mover.setGhostPush(message.getGhostPush());            
+	            mover.setGhostPush(message.getGhostPush());
 	            mover.markDirty();
 	            
 	            // Notify clients so they update the block visually
 	            world.markBlockForUpdate(mover.xCoord, mover.yCoord, mover.zCoord);
-	            
-	            // Refresh GUI if open
-	            //if (Minecraft.getMinecraft().currentScreen instanceof GuiItemMover) {
-	            //    GuiItemMover gui = (GuiItemMover) Minecraft.getMinecraft().currentScreen;
-	            //    gui.updateGhostSlots(); // <- this updates the SlotGhosts from TileEntity
-	            //}
 	        }
 
 	        return null; // no response needed
