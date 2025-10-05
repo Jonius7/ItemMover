@@ -11,15 +11,14 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.Facing;
 
 public class TileEntityItemMover extends TileEntity implements IInventory {
 
     // --- Inventories ---
     //private ItemStack[] ghostInventory = new ItemStack[9];     // Ghost slots
-	private ItemStack[] ghostPull = new ItemStack[9]; // Pull Ghost Slots
-	private ItemStack[] ghostPush = new ItemStack[9]; // Push Ghost Slots
-    private ItemStack[] internalInventory = new ItemStack[18]; // Real internal slots
+	private ItemStack[] ghostPull; // Pull Ghost Slots
+	private ItemStack[] ghostPush; // Push Ghost Slots
+    private ItemStack[] internalInventory; // Real internal slots
 
     // --- Configurable fields ---
     //private int inputSlot = 0;
@@ -27,6 +26,12 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     private int inputSide = 2;
     private int outputSide = 3;
     
+    public TileEntityItemMover() {
+    	super();
+        ghostPull = new ItemStack[9];
+        ghostPush = new ItemStack[9];
+        internalInventory = new ItemStack[18];
+    }
     /*
     // --- Update each tick ---
     @Override
@@ -110,14 +115,38 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         return new SimpleInventory(internalInventory.length, internalInventory);
     }
 
+    // Return IInventory views for GUI
     public IInventory getPullGhostInventory() {
-        return new SimpleInventoryGhost(getGhostPull().length);
+        return new GhostWrapperInventory(ghostPull);
     }
 
     public IInventory getPushGhostInventory() {
-        return new SimpleInventoryGhost(getGhostPush().length);
+        return new GhostWrapperInventory(ghostPush);
     }
     
+    /** Internal class: wrap an existing ItemStack[] as a ghost IInventory **/
+    private static class GhostWrapperInventory extends SimpleInventoryGhost {
+        private final ItemStack[] backing;
+
+        public GhostWrapperInventory(ItemStack[] backing) {
+            super(backing.length);
+            this.backing = backing;
+            // Initialize from backing
+            for (int i = 0; i < backing.length; i++) {
+                if (backing[i] != null) {
+                    super.setInventorySlotContents(i, backing[i]);
+                }
+            }
+        }
+
+        @Override
+        public void setInventorySlotContents(int index, ItemStack stack) {
+            super.setInventorySlotContents(index, stack);
+            if (index >= 0 && index < backing.length) {
+                backing[index] = stack != null ? stack.copy() : null;
+            }
+        }
+    }    
     
     // --- IInventory methods ---
     @Override
@@ -265,42 +294,39 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     @Override
     public void writeToNBT(NBTTagCompound compound) {
         super.writeToNBT(compound);
-
-        // --- Config ---
-        //tag.setInteger("InputSlot", inputSlot);
-        //tag.setInteger("OutputSlot", outputSlot);
+        //System.out.println("WRITE sides: " + inputSide + "," + outputSide);
         compound.setInteger("InputSide", inputSide);
         compound.setInteger("OutputSide", outputSide);
-
-        // --- Internal inventory ---
+        //System.out.println("WRITE sides: " + inputSide + "," + outputSide);
+        // Internal inventory
         for (int i = 0; i < internalInventory.length; i++) {
             if (internalInventory[i] != null) {
-                NBTTagCompound itemTag = new NBTTagCompound();
-                internalInventory[i].writeToNBT(itemTag);
-                compound.setTag("InternalSlot" + i, itemTag);
+                NBTTagCompound tag = new NBTTagCompound();
+                internalInventory[i].writeToNBT(tag);
+                compound.setTag("InternalSlot" + i, tag);
             }
         }
 
-     // Save pull ghost slots
+        // Ghost Pull
         NBTTagList pullList = new NBTTagList();
-        for (int i = 0; i < getGhostPull().length; i++) {
-            if (getGhostPull()[i] != null) {
-                NBTTagCompound tag = new NBTTagCompound();
-                tag.setByte("Slot", (byte)i);
-                getGhostPull()[i].writeToNBT(tag);
-                pullList.appendTag(tag);
+        for (int i = 0; i < ghostPull.length; i++) {
+            if (ghostPull[i] != null) {
+                NBTTagCompound t = new NBTTagCompound();
+                t.setByte("Slot", (byte) i);
+                ghostPull[i].writeToNBT(t);
+                pullList.appendTag(t);
             }
         }
         compound.setTag("GhostPull", pullList);
 
-        // Save push ghost slots (same idea)
+        // Ghost Push
         NBTTagList pushList = new NBTTagList();
-        for (int i = 0; i < getGhostPush().length; i++) {
-            if (getGhostPush()[i] != null) {
-                NBTTagCompound tag = new NBTTagCompound();
-                tag.setByte("Slot", (byte)i);
-                getGhostPush()[i].writeToNBT(tag);
-                pushList.appendTag(tag);
+        for (int i = 0; i < ghostPush.length; i++) {
+            if (ghostPush[i] != null) {
+                NBTTagCompound t = new NBTTagCompound();
+                t.setByte("Slot", (byte) i);
+                ghostPush[i].writeToNBT(t);
+                pushList.appendTag(t);
             }
         }
         compound.setTag("GhostPush", pushList);
@@ -310,39 +336,44 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     @Override
     public void readFromNBT(NBTTagCompound compound) {
         super.readFromNBT(compound);
-
-        // Initialize arrays if null
-        if (ghostPull == null) ghostPull = new ItemStack[9]; // adjust size
+        //System.out.println("READ sides: " + inputSide + "," + outputSide);
+        // Ensure arrays exist
+        if (ghostPull == null) ghostPull = new ItemStack[9];
         if (ghostPush == null) ghostPush = new ItemStack[9];
-        if (internalInventory == null) internalInventory = new ItemStack[internalInventory.length]; // your size
+        if (internalInventory == null) internalInventory = new ItemStack[18];
 
-        // Load sides
-        if (compound.hasKey("InputSide")) inputSide = compound.getInteger("InputSide");
-        if (compound.hasKey("OutputSide")) outputSide = compound.getInteger("OutputSide");
-
-        // Load internal inventory
+        if (compound.hasKey("InputSide")) {
+            inputSide = compound.getInteger("InputSide");
+        }
+        if (compound.hasKey("OutputSide")) {
+            outputSide = compound.getInteger("OutputSide");
+        }
+        //System.out.println("READ sides: " + inputSide + "," + outputSide);
         for (int i = 0; i < internalInventory.length; i++) {
-            if (compound.hasKey("InternalSlot" + i))
-                internalInventory[i] = ItemStack.loadItemStackFromNBT(compound.getCompoundTag("InternalSlot" + i));
-            else internalInventory[i] = null;
+            String key = "InternalSlot" + i;
+            if (compound.hasKey(key)) {
+                internalInventory[i] = ItemStack.loadItemStackFromNBT(compound.getCompoundTag(key));
+            } else {
+                internalInventory[i] = null;
+            }
         }
 
-        // Load ghost pull
         NBTTagList pullList = compound.getTagList("GhostPull", 10);
         for (int i = 0; i < pullList.tagCount(); i++) {
-            NBTTagCompound tag = pullList.getCompoundTagAt(i);
-            int slot = tag.getByte("Slot") & 255;
-            if (slot >= 0 && slot < ghostPull.length)
-                ghostPull[slot] = ItemStack.loadItemStackFromNBT(tag);
+            NBTTagCompound t = pullList.getCompoundTagAt(i);
+            int slot = t.getByte("Slot") & 0xFF;
+            if (slot >= 0 && slot < ghostPull.length) {
+                ghostPull[slot] = ItemStack.loadItemStackFromNBT(t);
+            }
         }
 
-        // Load ghost push
         NBTTagList pushList = compound.getTagList("GhostPush", 10);
         for (int i = 0; i < pushList.tagCount(); i++) {
-            NBTTagCompound tag = pushList.getCompoundTagAt(i);
-            int slot = tag.getByte("Slot") & 255;
-            if (slot >= 0 && slot < ghostPush.length)
-                ghostPush[slot] = ItemStack.loadItemStackFromNBT(tag);
+            NBTTagCompound t = pushList.getCompoundTagAt(i);
+            int slot = t.getByte("Slot") & 0xFF;
+            if (slot >= 0 && slot < ghostPush.length) {
+                ghostPush[slot] = ItemStack.loadItemStackFromNBT(t);
+            }
         }
     }
 
@@ -375,19 +406,30 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         setOutputSide(outputSide + (forward ? 1 : -1));
     }
 
-	public ItemStack[] getGhostPull() {
-		return ghostPull;
-	}
+    public ItemStack[] getGhostPull() {
+        return ghostPull;
+    }
 
-	public void setGhostPull(ItemStack[] ghostPull) {
-		this.ghostPull = ghostPull;
-	}
+    public void setGhostPull(ItemStack[] arr) {
+        if (arr == null) return;
+        // Copy array safely
+        int len = Math.min(arr.length, ghostPull.length);
+        for (int i = 0; i < len; i++) {
+            ghostPull[i] = arr[i] != null ? arr[i].copy() : null;
+        }
+        markDirty();
+    }
 
-	public ItemStack[] getGhostPush() {
-		return ghostPush;
-	}
+    public ItemStack[] getGhostPush() {
+        return ghostPush;
+    }
 
-	public void setGhostPush(ItemStack[] ghostPush) {
-		this.ghostPush = ghostPush;
-	}
+    public void setGhostPush(ItemStack[] arr) {
+        if (arr == null) return;
+        int len = Math.min(arr.length, ghostPush.length);
+        for (int i = 0; i < len; i++) {
+            ghostPush[i] = arr[i] != null ? arr[i].copy() : null;
+        }
+        markDirty();
+    }
 }

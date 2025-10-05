@@ -8,6 +8,7 @@ import io.netty.buffer.ByteBuf;
 import jonius7.itemmover.blocks.TileEntityItemMover;
 import jonius7.itemmover.gui.GuiItemMover;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
@@ -108,7 +109,11 @@ public class PacketUpdateItemMover implements IMessage {
 	public static class Handler implements IMessageHandler<PacketUpdateItemMover, IMessage> {
 	    @Override
 	    public IMessage onMessage(PacketUpdateItemMover message, MessageContext ctx) {
-	        World world = Minecraft.getMinecraft().theWorld;
+	    	// This runs on the server thread
+	        EntityPlayerMP player = ctx.getServerHandler().playerEntity;
+	        if (player == null) return null;
+
+	        World world = player.worldObj;
 	        if (world == null) return null;
 
 	        TileEntity te = world.getTileEntity(message.x, message.y, message.z);
@@ -116,17 +121,21 @@ public class PacketUpdateItemMover implements IMessage {
 	            TileEntityItemMover mover = (TileEntityItemMover) te;
 
 	            // Copy arrays to avoid reference issues
-	            mover.setGhostPull(message.getGhostPull());
-	            mover.setGhostPush(message.getGhostPush());
-	            
 	            mover.setInputSide(message.getInputSide());
 	            mover.setOutputSide(message.getOutputSide());
-
+	            
+	            mover.setGhostPull(message.getGhostPull());
+	            mover.setGhostPush(message.getGhostPush());            
+	            mover.markDirty();
+	            
+	            // Notify clients so they update the block visually
+	            world.markBlockForUpdate(mover.xCoord, mover.yCoord, mover.zCoord);
+	            
 	            // Refresh GUI if open
-	            if (Minecraft.getMinecraft().currentScreen instanceof GuiItemMover) {
-	                GuiItemMover gui = (GuiItemMover) Minecraft.getMinecraft().currentScreen;
-	                gui.updateGhostSlots(); // <- this updates the SlotGhosts from TileEntity
-	            }
+	            //if (Minecraft.getMinecraft().currentScreen instanceof GuiItemMover) {
+	            //    GuiItemMover gui = (GuiItemMover) Minecraft.getMinecraft().currentScreen;
+	            //    gui.updateGhostSlots(); // <- this updates the SlotGhosts from TileEntity
+	            //}
 	        }
 
 	        return null; // no response needed

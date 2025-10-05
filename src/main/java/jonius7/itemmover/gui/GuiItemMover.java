@@ -2,7 +2,9 @@ package jonius7.itemmover.gui;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import jonius7.itemmover.ItemMover;
 import jonius7.itemmover.blocks.TileEntityItemMover;
+import jonius7.itemmover.network.PacketUpdateItemMover;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
@@ -184,6 +186,9 @@ public class GuiItemMover extends GuiContainer {
             tile.cycleOutputSide(true);
             button.displayString = getSideName(tile.getOutputSide());
         }
+    	
+    	ItemMover.network.sendToServer(new PacketUpdateItemMover(tile));
+    	//ItemMover.network.sendToServer(new jonius7.itemmover.network.PacketUpdateItemMover(tile));
     	
         //super.mouseClicked(mouseX, mouseY, mouseButton);
     	
