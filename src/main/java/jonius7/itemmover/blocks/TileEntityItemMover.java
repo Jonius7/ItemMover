@@ -1,8 +1,13 @@
 package jonius7.itemmover.blocks;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import jonius7.itemmover.gui.ContainerItemMover;
 import jonius7.itemmover.gui.SimpleInventory;
 import jonius7.itemmover.gui.SimpleInventoryGhost;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -11,6 +16,7 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.play.server.S35PacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public class TileEntityItemMover extends TileEntity implements IInventory {
 
@@ -19,6 +25,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
 	private ItemStack[] ghostPull; // Pull Ghost Slots
 	private ItemStack[] ghostPush; // Push Ghost Slots
     private ItemStack[] internalInventory; // Real internal slots
+    private int[] ghostPullSlotNumbers;
+    private int[] ghostPushSlotNumbers;
 
     // --- Configurable fields ---
     //private int inputSlot = 0;
@@ -31,7 +39,18 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         ghostPull = new ItemStack[12];
         ghostPush = new ItemStack[12];
         internalInventory = new ItemStack[18];
+        ghostPullSlotNumbers = new int[12];
+        ghostPushSlotNumbers = new int[12];
     }
+    
+    @Override
+    public void updateEntity() {
+    	if (!worldObj.isRemote) {
+            tryPullItems();
+            // tryPushItems(); <-- later
+        }
+    }
+    
     /*
     // --- Update each tick ---
     @Override
@@ -110,7 +129,148 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     }
 	*/
     
- // Expose them as sub-inventories:
+    // Pulling Items Methods
+    public void tryPullItems() {
+        // --- Find adjacent inventory on the input side ---
+        ForgeDirection dir = ForgeDirection.getOrientation(inputSide);
+        TileEntity adjacent = worldObj.getTileEntity(
+                xCoord + dir.offsetX,
+                yCoord + dir.offsetY,
+                zCoord + dir.offsetZ
+        );
+
+        if (!(adjacent instanceof IInventory)) return;
+        IInventory source = (IInventory) adjacent;
+
+        // --- Step 1: Combine duplicate ghost slots ---
+        Map<String, Integer> desiredMap = new HashMap<>();
+        Map<String, ItemStack> representative = new HashMap<>();
+
+        for (ItemStack filter : ghostPull) {
+            if (filter == null) continue;
+
+            String key = getItemKey(filter);
+            int count = desiredMap.getOrDefault(key, 0);
+            desiredMap.put(key, count + filter.stackSize);
+            representative.put(key, filter);
+        }
+
+        // --- Step 2: For each unique desired item ---
+        for (Map.Entry<String, Integer> entry : desiredMap.entrySet()) {
+            ItemStack filter = representative.get(entry.getKey());
+            int desired = entry.getValue();
+
+            // --- Count existing internal items ---
+            int current = countMatchingInInternal(filter);
+
+            // --- If a player is viewing this block, count their held stack too ---
+            ItemStack held = getHeldStackIfViewerMatches(filter);
+            if (held != null) {
+                current += held.stackSize;
+            }
+
+            // --- If already satisfied, skip ---
+            if (current >= desired) continue;
+            int needed = desired - current;
+
+            // --- Pull from adjacent inventory ---
+            for (int srcSlot = 0; srcSlot < source.getSizeInventory(); srcSlot++) {
+                ItemStack srcStack = source.getStackInSlot(srcSlot);
+                if (srcStack == null) continue;
+
+                if (srcStack.isItemEqual(filter) &&
+                    ItemStack.areItemStackTagsEqual(srcStack, filter)) {
+
+                    int toMove = Math.min(srcStack.stackSize, needed);
+                    ItemStack extracted = srcStack.splitStack(toMove);
+
+                    insertIntoInternal(extracted);
+
+                    if (srcStack.stackSize <= 0)
+                        source.setInventorySlotContents(srcSlot, null);
+                    else
+                        source.setInventorySlotContents(srcSlot, srcStack);
+
+                    source.markDirty();
+                    needed -= toMove;
+
+                    if (needed <= 0) break;
+                }
+            }
+        }
+
+        markDirty();
+    }
+
+
+    private String getItemKey(ItemStack stack) {
+        // Simple unique key for "same item + same NBT"
+        String base = stack.getItem().getUnlocalizedName();
+        int dmg = stack.getItemDamage();
+        String nbt = stack.hasTagCompound() ? stack.getTagCompound().toString() : "";
+        return base + ":" + dmg + ":" + nbt;
+    }
+    
+    private ItemStack getHeldStackIfViewerMatches(ItemStack filter) {
+        for (Object obj : worldObj.playerEntities) {
+            if (!(obj instanceof EntityPlayerMP)) continue;
+            EntityPlayerMP player = (EntityPlayerMP) obj;
+
+            if (player.openContainer instanceof ContainerItemMover) {
+                TileEntity te = ((ContainerItemMover) player.openContainer).getTile();
+                if (te == this) {
+                    ItemStack held = player.inventory.getItemStack();
+                    if (held != null &&
+                        held.isItemEqual(filter) &&
+                        ItemStack.areItemStackTagsEqual(held, filter)) {
+                        return held;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    
+    private int countMatchingInInternal(ItemStack filter) {
+        int total = 0;
+        for (ItemStack stack : internalInventory) {
+            if (stack != null && stack.isItemEqual(filter)
+                    && ItemStack.areItemStackTagsEqual(stack, filter)) {
+                total += stack.stackSize;
+            }
+        }
+        return total;
+    }
+
+    private void insertIntoInternal(ItemStack stack) {
+        for (int i = 0; i < internalInventory.length; i++) {
+            ItemStack slotStack = internalInventory[i];
+
+            // Merge into existing stacks
+            if (slotStack != null && slotStack.isItemEqual(stack)
+                    && ItemStack.areItemStackTagsEqual(slotStack, stack)) {
+
+                int maxAdd = Math.min(slotStack.getMaxStackSize() - slotStack.stackSize, stack.stackSize);
+                slotStack.stackSize += maxAdd;
+                stack.stackSize -= maxAdd;
+
+                if (stack.stackSize <= 0) return;
+            }
+        }
+
+        // If still has remainder, place in empty slot
+        for (int i = 0; i < internalInventory.length; i++) {
+            if (internalInventory[i] == null) {
+                internalInventory[i] = stack.copy();
+                stack.stackSize = 0;
+                return;
+            }
+        }
+    }
+    
+    
+    // Expose them as sub-inventories:
     public IInventory getInternalInventory() {
         return new SimpleInventory(internalInventory.length, internalInventory);
     }
@@ -297,6 +457,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         //System.out.println("WRITE sides: " + inputSide + "," + outputSide);
         compound.setInteger("InputSide", inputSide);
         compound.setInteger("OutputSide", outputSide);
+        compound.setIntArray("GhostPullSlotNumbers", ghostPullSlotNumbers);
+        compound.setIntArray("GhostPullSlotNumbers", ghostPushSlotNumbers);
         //System.out.println("WRITE sides: " + inputSide + "," + outputSide);
         // Internal inventory
         for (int i = 0; i < internalInventory.length; i++) {
@@ -348,6 +510,9 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         if (compound.hasKey("OutputSide")) {
             outputSide = compound.getInteger("OutputSide");
         }
+        if (compound.hasKey("GhostPullSlotNumbers")) ghostPullSlotNumbers = compound.getIntArray("GhostPullSlotNumbers");
+        if (compound.hasKey("GhostPushSlotNumbers")) ghostPushSlotNumbers = compound.getIntArray("GhostPushSlotNumbers");
+        
         //System.out.println("READ sides: " + inputSide + "," + outputSide);
         for (int i = 0; i < internalInventory.length; i++) {
             String key = "InternalSlot" + i;

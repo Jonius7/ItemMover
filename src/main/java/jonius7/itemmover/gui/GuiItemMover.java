@@ -156,6 +156,8 @@ public class GuiItemMover extends GuiContainer {
         } else if (button.id == 1) {
             tile.cycleOutputSide(false);
             button.displayString = getSideName(tile.getOutputSide());
+        } else if (button.id >= 100 && button.id < 124) {
+        	//tile.setGhostPullSlotNumber(selectedGhostSlot, slotNumber);
         }
     }  
     

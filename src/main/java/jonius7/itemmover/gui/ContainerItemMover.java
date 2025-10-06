@@ -101,7 +101,6 @@ public class ContainerItemMover extends Container {
             }
         }
 
-
         // --- Player Inventory (3 rows x 9 columns) ---
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
@@ -121,7 +120,7 @@ public class ContainerItemMover extends Container {
 
     @Override
     public boolean canInteractWith(EntityPlayer player) {
-        return tile.isUseableByPlayer(player);
+        return getTile().isUseableByPlayer(player);
     }
 
     // --- Shift-click handling ---
@@ -225,12 +224,19 @@ public class ContainerItemMover extends Container {
     @Override
     public boolean enchantItem(EntityPlayer player, int action) {
         if (action == 0) {
-            tile.cycleInputSide(true);
+            getTile().cycleInputSide(true);
         } else if (action == 1) {
-            tile.cycleOutputSide(true);
+            getTile().cycleOutputSide(true);
         }
-        tile.markDirty();
+        getTile().markDirty();
         return true;
     }
+
+	/**
+	 * @return the tile
+	 */
+	public TileEntityItemMover getTile() {
+		return tile;
+	}
 
 }
