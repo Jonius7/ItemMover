@@ -29,7 +29,7 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 group = 'jonius7.itemmover'
-version = '0.3-pre3'
+version = '0.3-pre4'
 archivesBaseName = 'ItemMover'
 
 minecraft {

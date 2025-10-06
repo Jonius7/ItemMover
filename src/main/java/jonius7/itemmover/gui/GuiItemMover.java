@@ -9,6 +9,7 @@ import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.inventory.IInventory;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -156,10 +157,81 @@ public class GuiItemMover extends GuiContainer {
         } else if (button.id == 1) {
             tile.cycleOutputSide(false);
             button.displayString = getSideName(tile.getOutputSide());
-        } else if (button.id >= 100 && button.id < 124) {
-        	//tile.setGhostPullSlotNumber(selectedGhostSlot, slotNumber);
+        } else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
+            int ghostIndex = button.id - 100;
+            IInventory inv = tile.getInputInventory();
+            
+            if (inv != null && inv.getSizeInventory() > 0) {
+                int currentMapping = tile.getPullSlotMapping(ghostIndex);
+                int nextMapping = (currentMapping - 1) % inv.getSizeInventory();
+                tile.setPullSlotMapping(ghostIndex, nextMapping);
+                button.displayString = String.valueOf(nextMapping);
+
+                // Disable button if mapping is now out of bounds
+                button.enabled = nextMapping < inv.getSizeInventory();
+            } else {
+                // Disable if no inventory exists
+                button.enabled = false;
+            }
+        } else if (button.id >= 112 && button.id < 124) { // Push slot buttons
+            int ghostIndex = button.id - 112;
+            IInventory inv = tile.getOutputInventory();
+            
+            if (inv != null && inv.getSizeInventory() > 0) {
+                int currentMapping = tile.getPushSlotMapping(ghostIndex);
+                int nextMapping = (currentMapping - 1) % inv.getSizeInventory();
+                tile.setPushSlotMapping(ghostIndex, nextMapping);
+                button.displayString = String.valueOf(nextMapping);
+
+                button.enabled = nextMapping < inv.getSizeInventory();
+            } else {
+                button.enabled = false;
+            }
         }
-    }  
+    }
+    
+    @Override
+    protected void actionPerformed(GuiButton button) {
+    	if (button.id == 0) {
+            tile.cycleInputSide(true); // backwards
+            button.displayString = getSideName(tile.getInputSide());
+        } else if (button.id == 1) {
+            tile.cycleOutputSide(true);
+            button.displayString = getSideName(tile.getOutputSide());
+        } else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
+            int ghostIndex = button.id - 100;
+            IInventory inv = tile.getInputInventory();
+            
+            if (inv != null && inv.getSizeInventory() > 0) {
+                int currentMapping = tile.getPullSlotMapping(ghostIndex);
+                int nextMapping = (currentMapping + 1) % inv.getSizeInventory();
+                tile.setPullSlotMapping(ghostIndex, nextMapping);
+                button.displayString = String.valueOf(nextMapping);
+
+                // Disable button if mapping is now out of bounds
+                button.enabled = nextMapping < inv.getSizeInventory();
+            } else {
+                // Disable if no inventory exists
+                button.enabled = false;
+            }
+        } else if (button.id >= 112 && button.id < 124) { // Push slot buttons
+            int ghostIndex = button.id - 112;
+            IInventory inv = tile.getOutputInventory();
+            
+            if (inv != null && inv.getSizeInventory() > 0) {
+                int currentMapping = tile.getPushSlotMapping(ghostIndex);
+                int nextMapping = (currentMapping + 1) % inv.getSizeInventory();
+                tile.setPushSlotMapping(ghostIndex, nextMapping);
+                button.displayString = String.valueOf(nextMapping);
+
+                button.enabled = nextMapping < inv.getSizeInventory();
+            } else {
+                button.enabled = false;
+            }
+        }
+    	
+    	ItemMover.network.sendToServer(new PacketUpdateItemMover(tile));
+    }
     
     /** Play the standard GUI button press sound (1.7.10-friendly) */
     private void playButtonSound() {
@@ -172,52 +244,6 @@ public class GuiItemMover extends GuiContainer {
             // Fallback if mappings differ or method missing: play a simple player sound
             if (mc.thePlayer != null) mc.thePlayer.playSound("random.click", 1.0F, 1.0F);
         }
-    }
-    
-    @Override
-    protected void actionPerformed(GuiButton button) {
-    	if (button.id == 0) {
-            tile.cycleInputSide(true); // backwards
-            button.displayString = getSideName(tile.getInputSide());
-        } else if (button.id == 1) {
-            tile.cycleOutputSide(true);
-            button.displayString = getSideName(tile.getOutputSide());
-        }
-    	
-    	ItemMover.network.sendToServer(new PacketUpdateItemMover(tile));
-    	//ItemMover.network.sendToServer(new jonius7.itemmover.network.PacketUpdateItemMover(tile));
-    	
-        //super.mouseClicked(mouseX, mouseY, mouseButton);
-    	
-    	/*
-        // Always fetch fresh values from the TileEntity
-        int inputSlot = tile.getInputSlot();
-        int outputSlot = tile.getOutputSlot();
-        int inputSide = tile.getInputSide();
-        int outputSide = tile.getOutputSide();
-
-        switch (button.id) {
-            case 0: inputSlot = Math.min(inputSlot + 1, tile.getMaxSlot(inputSide)); break;
-            case 1: inputSlot = Math.max(0, inputSlot - 1); break;
-
-            case 2: outputSlot = Math.min(outputSlot + 1, tile.getMaxSlot(outputSide)); break;
-            case 3: outputSlot = Math.max(0, outputSlot - 1); break;
-
-            case 4: inputSide = (inputSide + 1) % 6; break;
-            case 5: inputSide = (inputSide + 5) % 6; break;
-
-            case 6: outputSide = (outputSide + 1) % 6; break;
-            case 7: outputSide = (outputSide + 5) % 6; break;
-        }
-
-        // Update TileEntity
-        tile.setInputSlot(inputSlot);
-        tile.setOutputSlot(outputSlot);
-        tile.setInputSide(inputSide);
-        tile.setOutputSide(outputSide);
-
-        // Send update to server
-        ItemMover.network.sendToServer(new jonius7.itemmover.network.PacketUpdateItemMover(tile));*/
     }
 
     @Override

@@ -9,6 +9,7 @@ import jonius7.itemmover.gui.SimpleInventoryGhost;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -33,14 +34,24 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     //private int outputSlot = 0;
     private int inputSide = 2;
     private int outputSide = 3;
+    private final int NUMBER_OF_GHOST_SLOTS = 12;
+    private int[] pullSlotMapping;
+    private int[] pushSlotMapping;
     
     public TileEntityItemMover() {
     	super();
-        ghostPull = new ItemStack[12];
-        ghostPush = new ItemStack[12];
+        ghostPull = new ItemStack[NUMBER_OF_GHOST_SLOTS];
+        ghostPush = new ItemStack[NUMBER_OF_GHOST_SLOTS];
         internalInventory = new ItemStack[18];
-        ghostPullSlotNumbers = new int[12];
-        ghostPushSlotNumbers = new int[12];
+        ghostPullSlotNumbers = new int[NUMBER_OF_GHOST_SLOTS];
+        ghostPushSlotNumbers = new int[NUMBER_OF_GHOST_SLOTS];
+        // For pull and push ghost slots
+        pullSlotMapping = new int[NUMBER_OF_GHOST_SLOTS];
+        pushSlotMapping = new int[NUMBER_OF_GHOST_SLOTS];
+        // Populate default values
+        for (int i = 0; i < pullSlotMapping.length; i++) pullSlotMapping[i] = i;
+        for (int i = 0; i < pushSlotMapping.length; i++) pushSlotMapping[i] = i;
+        
     }
     
     @Override
@@ -131,24 +142,21 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     
     // Pulling Items Methods
     public void tryPullItems() {
-        // --- Find adjacent inventory on the input side ---
+    	// --- Get the adjacent inventory on the input side ---
         ForgeDirection dir = ForgeDirection.getOrientation(inputSide);
         TileEntity adjacent = worldObj.getTileEntity(
                 xCoord + dir.offsetX,
                 yCoord + dir.offsetY,
                 zCoord + dir.offsetZ
         );
-
         if (!(adjacent instanceof IInventory)) return;
         IInventory source = (IInventory) adjacent;
 
         // --- Step 1: Combine duplicate ghost slots ---
         Map<String, Integer> desiredMap = new HashMap<>();
         Map<String, ItemStack> representative = new HashMap<>();
-
         for (ItemStack filter : ghostPull) {
             if (filter == null) continue;
-
             String key = getItemKey(filter);
             int count = desiredMap.getOrDefault(key, 0);
             desiredMap.put(key, count + filter.stackSize);
@@ -160,20 +168,18 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             ItemStack filter = representative.get(entry.getKey());
             int desired = entry.getValue();
 
-            // --- Count existing internal items ---
+            // --- Count existing items in internal inventory ---
             int current = countMatchingInInternal(filter);
 
-            // --- If a player is viewing this block, count their held stack too ---
+            // --- Include held stack if a player is viewing this block ---
             ItemStack held = getHeldStackIfViewerMatches(filter);
-            if (held != null) {
-                current += held.stackSize;
-            }
+            if (held != null) current += held.stackSize;
 
-            // --- If already satisfied, skip ---
+            // --- Already satisfied? Skip ---
             if (current >= desired) continue;
             int needed = desired - current;
 
-            // --- Pull from adjacent inventory ---
+            // --- Step 3: Pull from source inventory ---
             for (int srcSlot = 0; srcSlot < source.getSizeInventory(); srcSlot++) {
                 ItemStack srcStack = source.getStackInSlot(srcSlot);
                 if (srcStack == null) continue;
@@ -184,12 +190,12 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
                     int toMove = Math.min(srcStack.stackSize, needed);
                     ItemStack extracted = srcStack.splitStack(toMove);
 
+                    // --- Insert into your internal inventory ---
                     insertIntoInternal(extracted);
 
-                    if (srcStack.stackSize <= 0)
-                        source.setInventorySlotContents(srcSlot, null);
-                    else
-                        source.setInventorySlotContents(srcSlot, srcStack);
+                    // --- Update source inventory ---
+                    if (srcStack.stackSize <= 0) source.setInventorySlotContents(srcSlot, null);
+                    else source.setInventorySlotContents(srcSlot, srcStack);
 
                     source.markDirty();
                     needed -= toMove;
@@ -199,26 +205,58 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             }
         }
 
-        markDirty();
+        markDirty(); // mark TileEntity dirty for saving & updates
     }
 
 
+    // Helper to get a unique key for an ItemStack
     private String getItemKey(ItemStack stack) {
-        // Simple unique key for "same item + same NBT"
-        String base = stack.getItem().getUnlocalizedName();
-        int dmg = stack.getItemDamage();
-        String nbt = stack.hasTagCompound() ? stack.getTagCompound().toString() : "";
-        return base + ":" + dmg + ":" + nbt;
+        if (stack == null) return "null";
+        int id = Item.getIdFromItem(stack.getItem());
+        return id + ":" + stack.getItemDamage();
     }
     
-    private ItemStack getHeldStackIfViewerMatches(ItemStack filter) {
-        for (Object obj : worldObj.playerEntities) {
-            if (!(obj instanceof EntityPlayerMP)) continue;
-            EntityPlayerMP player = (EntityPlayerMP) obj;
+    // Helper to count matching items in internal inventory
+    private int countMatchingInInternal(ItemStack filter) {
+        int count = 0;
+        for (ItemStack slotStack : internalInventory) {
+            if (slotStack != null &&
+                slotStack.isItemEqual(filter) &&
+                ItemStack.areItemStackTagsEqual(slotStack, filter)) {
+                count += slotStack.stackSize;
+            }
+        }
+        return count;
+    }
 
+
+    // Helper to insert items into internal inventory
+    private void insertIntoInternal(ItemStack toInsert) {
+        for (int i = 0; i < internalInventory.length; i++) {
+            ItemStack slotStack = internalInventory[i];
+            if (slotStack == null) {
+                internalInventory[i] = toInsert.copy();
+                return;
+            } else if (slotStack.isItemEqual(toInsert) &&
+                       ItemStack.areItemStackTagsEqual(slotStack, toInsert) &&
+                       slotStack.stackSize < slotStack.getMaxStackSize()) {
+                int space = slotStack.getMaxStackSize() - slotStack.stackSize;
+                int added = Math.min(space, toInsert.stackSize);
+                slotStack.stackSize += added;
+                toInsert.stackSize -= added;
+                if (toInsert.stackSize <= 0) return;
+            }
+        }
+    }
+    
+    // Account for a player holding a matching stack
+    private ItemStack getHeldStackIfViewerMatches(ItemStack filter) {
+        if (worldObj.isRemote) return null; // only server-side
+        for (Object obj : worldObj.playerEntities) {
+            EntityPlayer player = (EntityPlayer) obj;
             if (player.openContainer instanceof ContainerItemMover) {
-                TileEntity te = ((ContainerItemMover) player.openContainer).getTile();
-                if (te == this) {
+                TileEntityItemMover tile = ((ContainerItemMover) player.openContainer).getTile();
+                if (tile == this) {
                     ItemStack held = player.inventory.getItemStack();
                     if (held != null &&
                         held.isItemEqual(filter) &&
@@ -229,44 +267,6 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             }
         }
         return null;
-    }
-
-    
-    private int countMatchingInInternal(ItemStack filter) {
-        int total = 0;
-        for (ItemStack stack : internalInventory) {
-            if (stack != null && stack.isItemEqual(filter)
-                    && ItemStack.areItemStackTagsEqual(stack, filter)) {
-                total += stack.stackSize;
-            }
-        }
-        return total;
-    }
-
-    private void insertIntoInternal(ItemStack stack) {
-        for (int i = 0; i < internalInventory.length; i++) {
-            ItemStack slotStack = internalInventory[i];
-
-            // Merge into existing stacks
-            if (slotStack != null && slotStack.isItemEqual(stack)
-                    && ItemStack.areItemStackTagsEqual(slotStack, stack)) {
-
-                int maxAdd = Math.min(slotStack.getMaxStackSize() - slotStack.stackSize, stack.stackSize);
-                slotStack.stackSize += maxAdd;
-                stack.stackSize -= maxAdd;
-
-                if (stack.stackSize <= 0) return;
-            }
-        }
-
-        // If still has remainder, place in empty slot
-        for (int i = 0; i < internalInventory.length; i++) {
-            if (internalInventory[i] == null) {
-                internalInventory[i] = stack.copy();
-                stack.stackSize = 0;
-                return;
-            }
-        }
     }
     
     
@@ -492,6 +492,24 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             }
         }
         compound.setTag("GhostPush", pushList);
+        
+        NBTTagList pullMappingList = new NBTTagList();
+        for (int i = 0; i < pullSlotMapping.length; i++) {
+            NBTTagCompound tag = new NBTTagCompound();
+            tag.setInteger("GhostIndex", i);
+            tag.setInteger("SlotNumber", pullSlotMapping[i]);
+            pullMappingList.appendTag(tag);
+        }
+        compound.setTag("PullSlotMapping", pullMappingList);
+
+        NBTTagList pushMappingList = new NBTTagList();
+        for (int i = 0; i < pushSlotMapping.length; i++) {
+            NBTTagCompound tag = new NBTTagCompound();
+            tag.setInteger("GhostIndex", i);
+            tag.setInteger("SlotNumber", pushSlotMapping[i]);
+            pushMappingList.appendTag(tag);
+        }
+        compound.setTag("PushSlotMapping", pushMappingList);
     }
 
 
@@ -540,17 +558,23 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
                 ghostPush[slot] = ItemStack.loadItemStackFromNBT(t);
             }
         }
+        
+        NBTTagList pullMappingList = compound.getTagList("PullSlotMapping", 10);
+        for (int i = 0; i < pullMappingList.tagCount(); i++) {
+            NBTTagCompound tag = pullMappingList.getCompoundTagAt(i);
+            int ghostIndex = tag.getInteger("GhostIndex");
+            pullSlotMapping[ghostIndex] = tag.getInteger("SlotNumber");
+        }
+
+        NBTTagList pushMappingList = compound.getTagList("PushSlotMapping", 10);
+        for (int i = 0; i < pushMappingList.tagCount(); i++) {
+            NBTTagCompound tag = pushMappingList.getCompoundTagAt(i);
+            int ghostIndex = tag.getInteger("GhostIndex");
+            pushSlotMapping[ghostIndex] = tag.getInteger("SlotNumber");
+        }
     }
 
     // --- Config getters/setters ---
-    /*
-    public int getInputSlot() { return inputSlot; }
-    public void setInputSlot(int slot) { inputSlot = slot; markDirty(); sendUpdatePacket(); }
-
-    public int getOutputSlot() { return outputSlot; }
-    public void setOutputSlot(int slot) { outputSlot = slot; markDirty(); sendUpdatePacket(); }
-    */
-    
     public int getInputSide() { return inputSide; }
     public int getOutputSide() { return outputSide; }
     
@@ -596,5 +620,49 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             ghostPush[i] = arr[i] != null ? arr[i].copy() : null;
         }
         markDirty();
+    }
+    
+    public int getPullSlotMapping(int ghostIndex) {
+        return pullSlotMapping[ghostIndex];
+    }
+
+    public void setPullSlotMapping(int ghostIndex, int slotNumber) {
+        pullSlotMapping[ghostIndex] = slotNumber;
+        markDirty();
+    }
+
+    public int getPushSlotMapping(int ghostIndex) {
+        return pushSlotMapping[ghostIndex];
+    }
+
+    public void setPushSlotMapping(int ghostIndex, int slotNumber) {
+        pushSlotMapping[ghostIndex] = slotNumber;
+        markDirty();
+    }
+    
+    public int getInternalInventoryLength () {
+    	return internalInventory.length;
+    }
+    
+    public IInventory getInputInventory() {
+        ForgeDirection dir = ForgeDirection.getOrientation(inputSide);
+        int x = xCoord + dir.offsetX;
+        int y = yCoord + dir.offsetY;
+        int z = zCoord + dir.offsetZ;
+
+        TileEntity te = worldObj.getTileEntity(x, y, z);
+        if (te instanceof IInventory) return (IInventory) te;
+        return null;
+    }
+
+    public IInventory getOutputInventory() {
+        ForgeDirection dir = ForgeDirection.getOrientation(outputSide);
+        int x = xCoord + dir.offsetX;
+        int y = yCoord + dir.offsetY;
+        int z = zCoord + dir.offsetZ;
+
+        TileEntity te = worldObj.getTileEntity(x, y, z);
+        if (te instanceof IInventory) return (IInventory) te;
+        return null;
     }
 }
