@@ -25,20 +25,6 @@ public class GuiItemMover extends GuiContainer {
         this.xSize = 256;
         this.ySize = 256;
     }
-    
- // Call this whenever ghost slots change
-    public void updateGhostSlots() {
-        ContainerItemMover container = (ContainerItemMover) this.inventorySlots;
-        for (int i = 0; i < container.ghostPullSlots.length; i++) {
-            SlotGhost slot = container.ghostPullSlots[i];
-            slot.putStack(tile.getGhostPull()[i]);
-        }
-
-        for (int i = 0; i < container.ghostPushSlots.length; i++) {
-            SlotGhost slot = container.ghostPushSlots[i];
-            slot.putStack(tile.getGhostPush()[i]);
-        }
-    }
 
     @Override
     public void initGui() {
@@ -64,7 +50,7 @@ public class GuiItemMover extends GuiContainer {
             int x = guiLeft + pullStartX + col * spacingX;
             int y = guiTop + pullStartY + row * spacingY;
 
-            GuiButton btn = new GuiButton(100 + i, x, y, buttonWidth, buttonHeight, "" + (i + 1));
+            GuiButton btn = new GuiButton(100 + i, x, y, buttonWidth, buttonHeight, "" + (i));
             this.buttonList.add(btn);
         }
         
@@ -74,52 +60,13 @@ public class GuiItemMover extends GuiContainer {
             int x = guiLeft + pushStartX + col * spacingX;
             int y = guiTop + pushStartY + row * spacingY;
 
-            GuiButton btn = new GuiButton(112 + i, x, y, buttonWidth, buttonHeight, "" + (i + 1));
+            GuiButton btn = new GuiButton(112 + i, x, y, buttonWidth, buttonHeight, "" + (i));
             this.buttonList.add(btn);
         }
        
         // Side Selection Buttons
         this.buttonList.add(new GuiButton(0, guiLeft + 40, guiTop + 20, 60, 20, getSideName(tile.getInputSide())));
         this.buttonList.add(new GuiButton(1, guiLeft + 167, guiTop + 20, 60, 20, getSideName(tile.getOutputSide())));
-        
-        /*
-        // --- Input Slot ---
-        btnInputSlotUp = new GuiButton(0, guiLeft + 40, guiTop + 30, 20, 20, "+");
-        btnInputSlotDown = new GuiButton(1, guiLeft + 60, guiTop + 30, 20, 20, "-");
-
-        // --- Output Slot ---
-        btnOutputSlotUp = new GuiButton(2, guiLeft + 40, guiTop + 60, 20, 20, "+");
-        btnOutputSlotDown = new GuiButton(3, guiLeft + 60, guiTop + 60, 20, 20, "-");
-
-        // --- Input Side ---
-        btnInputSideUp = new GuiButton(4, guiLeft + 110, guiTop + 30, 20, 20, "+");
-        btnInputSideDown = new GuiButton(5, guiLeft + 130, guiTop + 30, 20, 20, "-");
-
-        // --- Output Side ---
-        btnOutputSideUp = new GuiButton(6, guiLeft + 110, guiTop + 60, 20, 20, "+");
-        btnOutputSideDown = new GuiButton(7, guiLeft + 130, guiTop + 60, 20, 20, "-");
-
-        buttonList.add(btnInputSlotUp);
-        buttonList.add(btnInputSlotDown);
-        buttonList.add(btnOutputSlotUp);
-        buttonList.add(btnOutputSlotDown);
-        buttonList.add(btnInputSideUp);
-        buttonList.add(btnInputSideDown);
-        buttonList.add(btnOutputSideUp);
-        buttonList.add(btnOutputSideDown);
-        */
-        
-        /*//simple 3x3 grid
-        for (int i = 0; i < 9; i++) {
-        	int row = i / 3;
-        	int col = i % 3;
-        	
-        	int x = guiLeft + 40 + col * 20;
-        	int y = guiTop + 90 + row * 20;
-        	GuiButton btn = new GuiButton(i + 8, x, y, 20, 20, "" + (i + 1));
-        	buttonList.add(btn);
-        }
-        */
     }
     
     private String getSideName(int side) {
@@ -157,7 +104,7 @@ public class GuiItemMover extends GuiContainer {
         } else if (button.id == 1) {
             tile.cycleOutputSide(false);
             button.displayString = getSideName(tile.getOutputSide());
-        } else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
+        }/* else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
             int ghostIndex = button.id - 100;
             IInventory inv = tile.getInputInventory();
             
@@ -187,7 +134,8 @@ public class GuiItemMover extends GuiContainer {
             } else {
                 button.enabled = false;
             }
-        }
+        }*/
+        ItemMover.network.sendToServer(new PacketUpdateItemMover(tile));
     }
     
     @Override
@@ -198,7 +146,7 @@ public class GuiItemMover extends GuiContainer {
         } else if (button.id == 1) {
             tile.cycleOutputSide(true);
             button.displayString = getSideName(tile.getOutputSide());
-        } else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
+        }/* else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
             int ghostIndex = button.id - 100;
             IInventory inv = tile.getInputInventory();
             
@@ -228,8 +176,7 @@ public class GuiItemMover extends GuiContainer {
             } else {
                 button.enabled = false;
             }
-        }
-    	
+        }*/
     	ItemMover.network.sendToServer(new PacketUpdateItemMover(tile));
     }
     

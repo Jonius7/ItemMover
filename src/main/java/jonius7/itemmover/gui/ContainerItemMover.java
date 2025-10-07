@@ -1,5 +1,7 @@
 package jonius7.itemmover.gui;
 
+import org.lwjgl.input.Keyboard;
+
 import jonius7.itemmover.blocks.TileEntityItemMover;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -128,7 +130,8 @@ public class ContainerItemMover extends Container {
     public ItemStack transferStackInSlot(EntityPlayer player, int index) {
         ItemStack itemstack = null;
         Slot slot = (Slot) this.inventorySlots.get(index);
-
+        
+        if (slot instanceof SlotGhost) return null; //behaviour for ghost slots already in slotClick
         if (slot != null && slot.getHasStack()) {
             ItemStack stackInSlot = slot.getStack();
             itemstack = stackInSlot.copy();
@@ -161,75 +164,111 @@ public class ContainerItemMover extends Container {
 
         return itemstack;
     }
-
-
+    
+    /*
     @Override
-    public ItemStack slotClick(int slotId, int mouseButton, int modifier, EntityPlayer player) {
-    	if (slotId >= 0 && slotId < this.inventorySlots.size()) {
-            Slot slot = (Slot) this.inventorySlots.get(slotId);
+    protected boolean mergeItemStack(ItemStack stack, int startIndex, int endIndex, boolean reverse) {
+        boolean merged = false;
 
-	        if (slot instanceof SlotGhost) {
-	            ItemStack current = slot.getStack();
-	            ItemStack held = player.inventory.getItemStack();
-	            
-	            // --- Handle Shift-click specifically ---
-	            if (modifier == 1) { // Shift-click
-	                if (held != null) {
-	                    // Add the same stack to ghost slot but don't consume held stack
-	                    ItemStack copy = held.copy();
-	                    copy.stackSize = held.stackSize;
-	                    slot.putStack(copy);
-	                } else {
-	                    slot.putStack(null);
-	                }
-	                return held; // Don’t consume item
-	            }
-	            
-	            if (mouseButton == 0) { // Left click
-	                if (held != null) {
-	                    if (current != null && current.isItemEqual(held) &&
-	                        ItemStack.areItemStackTagsEqual(current, held)) {
-	                        current.stackSize = Math.min(current.getMaxStackSize(), current.stackSize + 1);
-	                        slot.putStack(current); // updates GUI + TileEntity automatically
-	                    } else {
-	                        ItemStack copy = held.copy();
-	                        copy.stackSize = 1;
-	                        slot.putStack(copy); // updates GUI + TileEntity automatically
-	                    }
-	                } else {
-	                    slot.putStack(null); // clears slot and TileEntity
-	                }
-	            } else if (mouseButton == 1) { // Right click
-	                if (held != null) {
-	                    if (current != null && current.isItemEqual(held) &&
-	                        ItemStack.areItemStackTagsEqual(current, held)) {
-	                        current.stackSize--;
-	                        if (current.stackSize <= 0) slot.putStack(null);
-	                        else slot.putStack(current);
-	                    } else {
-	                        ItemStack copy = held.copy();
-	                        copy.stackSize = 1;
-	                        slot.putStack(copy);
-	                    }
-	                } else {
-	                    slot.putStack(null);
-	                }
-	            }
-	            return held;
-	        }
-    	}
-        return super.slotClick(slotId, mouseButton, modifier, player);
+        int i = reverse ? endIndex - 1 : startIndex;
+        int step = reverse ? -1 : 1;
+
+        while ((reverse ? i >= startIndex : i < endIndex) && stack != null && stack.stackSize > 0) {
+            Slot slot = (Slot) this.inventorySlots.get(i);
+
+            // --- Handle ghost slots specially ---
+            if (slot instanceof SlotGhost) {
+                ItemStack current = slot.getStack();
+
+                if (current == null) {
+                    // Put a copy of the held stack
+                    slot.putStack(stack.copy());
+                    merged = true;
+                    break; // ghost slots only take one operation per shift-click
+                } else if (current.isItemEqual(stack) &&
+                           ItemStack.areItemStackTagsEqual(current, stack)) {
+                    // Increment size without consuming the held stack
+                    current.stackSize = Math.min(current.getMaxStackSize(), current.stackSize + stack.stackSize);
+                    slot.putStack(current);
+                    merged = true;
+                    break;
+                }
+            } else {
+                // Normal slot behavior for internal/inventory slots
+                merged |= super.mergeItemStack(stack, i, i + 1, false);
+            }
+
+            i += step;
+        }
+
+        return merged;
     }
+	*/
     
     @Override
-    public boolean enchantItem(EntityPlayer player, int action) {
-        if (action == 0) {
-            getTile().cycleInputSide(true);
-        } else if (action == 1) {
-            getTile().cycleOutputSide(true);
+    public ItemStack slotClick(int slotId, int mouseButton, int modifier, EntityPlayer player) {
+        if (slotId >= 0 && slotId < this.inventorySlots.size()) {
+        	
+            Slot slot = (Slot) this.inventorySlots.get(slotId);
+
+            if (slot instanceof SlotGhost) {
+            	ItemStack current = slot.getStack();
+                ItemStack held = player.inventory.getItemStack();
+                boolean isShiftDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+                
+                // Shift-click
+                if (isShiftDown) {
+                	//System.out.println("SELECTING SLOT ID + SHIFT: " + slotId);
+                    if (held != null) {
+                        slot.putStack(held.copy()); // full stack copy
+                    } else {
+                        slot.putStack(null);
+                    }
+                    tile.markDirty();
+                    return held; // don't consume
+                }
+                /*
+                // Left click
+                if (mouseButton == 0) {
+                    if (held != null) {
+                        if (current != null && current.isItemEqual(held) &&
+                            ItemStack.areItemStackTagsEqual(current, held)) {
+                            current.stackSize = Math.min(current.getMaxStackSize(), current.stackSize + 1);
+                            slot.putStack(current);
+                        } else {
+                            ItemStack copy = held.copy();
+                            copy.stackSize = 1;
+                            slot.putStack(copy);
+                        }
+                    } else {
+                        slot.putStack(null);
+                    }
+                }
+
+                // Right click
+                if (mouseButton == 1) {
+                    if (held != null) {
+                        if (current != null && current.isItemEqual(held) &&
+                            ItemStack.areItemStackTagsEqual(current, held)) {
+                            current.stackSize--;
+                            if (current.stackSize <= 0) slot.putStack(null);
+                            else slot.putStack(current);
+                        } else {
+                            ItemStack copy = held.copy();
+                            copy.stackSize = 1;
+                            slot.putStack(copy);
+                        }
+                    } else {
+                        slot.putStack(null);
+                    }
+                }
+				*/
+                return held; // always return held for ghost slots
+            }
         }
-        getTile().markDirty();
-        return true;
+
+        // Regular slots
+        return super.slotClick(slotId, mouseButton, modifier, player);
     }
 
 	/**
