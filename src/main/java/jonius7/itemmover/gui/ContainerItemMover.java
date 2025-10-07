@@ -2,6 +2,7 @@ package jonius7.itemmover.gui;
 
 import org.lwjgl.input.Keyboard;
 
+import cpw.mods.fml.common.FMLCommonHandler;
 import jonius7.itemmover.blocks.TileEntityItemMover;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;
@@ -206,6 +207,16 @@ public class ContainerItemMover extends Container {
 	*/
     
     @Override
+    protected boolean mergeItemStack(ItemStack stack, int startIndex, int endIndex, boolean reverse) {
+        // Prevent vanilla merging into ghost slots
+        for (int i = startIndex; i < endIndex; i++) {
+            Slot slot = (Slot) this.inventorySlots.get(i);
+            if (slot instanceof SlotGhost) return false;
+        }
+        return super.mergeItemStack(stack, startIndex, endIndex, reverse);
+    }
+    
+    @Override
     public ItemStack slotClick(int slotId, int mouseButton, int modifier, EntityPlayer player) {
         if (slotId >= 0 && slotId < this.inventorySlots.size()) {
         	
@@ -214,7 +225,10 @@ public class ContainerItemMover extends Container {
             if (slot instanceof SlotGhost) {
             	ItemStack current = slot.getStack();
                 ItemStack held = player.inventory.getItemStack();
-                boolean isShiftDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+                boolean isShiftDown = false;
+                if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
+                	isShiftDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+                }
                 
                 // Shift-click
                 if (isShiftDown) {
@@ -225,11 +239,10 @@ public class ContainerItemMover extends Container {
                         slot.putStack(null);
                     }
                     tile.markDirty();
+                    // Important: Tell the client we handled the click
+                    detectAndSendChanges(); // updates the container for all viewers
                     return held; // don't consume
-                }
-                /*
-                // Left click
-                if (mouseButton == 0) {
+                } else if (mouseButton == 0) { // Left click
                     if (held != null) {
                         if (current != null && current.isItemEqual(held) &&
                             ItemStack.areItemStackTagsEqual(current, held)) {
@@ -243,10 +256,7 @@ public class ContainerItemMover extends Container {
                     } else {
                         slot.putStack(null);
                     }
-                }
-
-                // Right click
-                if (mouseButton == 1) {
+                } else if (mouseButton == 1) { // Right click
                     if (held != null) {
                         if (current != null && current.isItemEqual(held) &&
                             ItemStack.areItemStackTagsEqual(current, held)) {
@@ -262,7 +272,7 @@ public class ContainerItemMover extends Container {
                         slot.putStack(null);
                     }
                 }
-				*/
+                detectAndSendChanges(); // update GUI
                 return held; // always return held for ghost slots
             }
         }

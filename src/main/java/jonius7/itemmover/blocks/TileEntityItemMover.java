@@ -58,87 +58,9 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     public void updateEntity() {
     	if (!worldObj.isRemote) {
             tryPullItems();
-            // tryPushItems(); <-- later
+            tryPushItems();
         }
     }
-    
-    /*
-    // --- Update each tick ---
-    @Override
-    public void updateEntity() {
-        if (worldObj.isRemote) return;
-
-        // Pull from input side
-        IInventory inInv = getAdjacentInventory(inputSide);
-        if (inInv != null && inputSlot >= 0 && inputSlot < inInv.getSizeInventory()) {
-            ItemStack inStack = inInv.getStackInSlot(inputSlot);
-            if (inStack != null) {
-                for (int i = 0; i < internalInventory.length; i++) {
-                    if (internalInventory[i] == null) {
-                        internalInventory[i] = inInv.decrStackSize(inputSlot, 1);
-                        markDirty();
-                        break;
-                    } else if (internalInventory[i].isItemEqual(inStack) &&
-                               ItemStack.areItemStackTagsEqual(internalInventory[i], inStack) &&
-                               internalInventory[i].stackSize < Math.min(internalInventory[i].getMaxStackSize(), getInventoryStackLimit())) {
-                        inInv.decrStackSize(inputSlot, 1);
-                        internalInventory[i].stackSize += 1;
-                        markDirty();
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Push to output side
-        for (int i = 0; i < internalInventory.length; i++) {
-            ItemStack stack = internalInventory[i];
-            if (stack != null) {
-                IInventory outInv = getAdjacentInventory(outputSide);
-                if (outInv != null) {
-                    stack = insertIntoInventory(outInv, outputSlot, stack);
-                    internalInventory[i] = stack;
-                    markDirty();
-                }
-            }
-        }
-    }
-    
-
-    // --- Helpers ---
-    private IInventory getAdjacentInventory(int side) {
-        int x = xCoord + Facing.offsetsXForSide[side];
-        int y = yCoord + (side == 0 ? -1 : side == 1 ? 1 : 0);
-        int z = zCoord + Facing.offsetsZForSide[side];
-        TileEntity te = worldObj.getTileEntity(x, y, z);
-        return te instanceof IInventory ? (IInventory) te : null;
-    }
-
-    private ItemStack insertIntoInventory(IInventory inv, int slot, ItemStack stack) {
-        if (stack == null || slot < 0 || slot >= inv.getSizeInventory()) return stack;
-
-        ItemStack target = inv.getStackInSlot(slot);
-        if (target == null) {
-            inv.setInventorySlotContents(slot, stack);
-            return null;
-        }
-
-        if (target.isItemEqual(stack) && ItemStack.areItemStackTagsEqual(target, stack)) {
-            int max = Math.min(target.getMaxStackSize(), inv.getInventoryStackLimit());
-            int total = target.stackSize + stack.stackSize;
-            if (total <= max) {
-                target.stackSize = total;
-                return null;
-            } else {
-                target.stackSize = max;
-                stack.stackSize = total - max;
-                return stack;
-            }
-        }
-
-        return stack;
-    }
-	*/
     
     // Pulling Items Methods
     public void tryPullItems() {
@@ -207,6 +129,94 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
 
         markDirty(); // mark TileEntity dirty for saving & updates
     }
+    
+    /**
+     * Attempts to push items from internal inventory to the output block
+     * according to ghost slot configuration and slot mappings.
+     * Call this from updateEntity() on the server side.
+     */
+    public void tryPushItems() {
+        // --- Find adjacent inventory on the output side ---
+        ForgeDirection dir = ForgeDirection.getOrientation(outputSide);
+        TileEntity adjacent = worldObj.getTileEntity(
+                xCoord + dir.offsetX,
+                yCoord + dir.offsetY,
+                zCoord + dir.offsetZ
+        );
+
+        if (!(adjacent instanceof IInventory)) return;
+        IInventory target = (IInventory) adjacent;
+
+        // --- Loop through ghostPush slots ---
+        for (int ghostIndex = 0; ghostIndex < ghostPush.length; ghostIndex++) {
+            ItemStack filter = ghostPush[ghostIndex];
+            if (filter == null) continue;
+
+            int mappedSlot = getPushSlotMapping(ghostIndex); // slot number in target inventory
+            if (mappedSlot < 0 || mappedSlot >= target.getSizeInventory()) continue;
+
+            ItemStack existing = target.getStackInSlot(mappedSlot);
+
+            if (existing == null) {
+                // Slot empty → pull up to ghost stack size from internal
+                ItemStack extracted = extractFromInternal(filter, filter.stackSize);
+                if (extracted != null) target.setInventorySlotContents(mappedSlot, extracted);
+            } else if (existing.isItemEqual(filter) && ItemStack.areItemStackTagsEqual(existing, filter)) {
+                // Slot has correct item → top up to ghost stack size
+                int needed = filter.stackSize - existing.stackSize;
+                if (needed > 0) {
+                    ItemStack extracted = extractFromInternal(filter, needed);
+                    if (extracted != null) {
+                        existing.stackSize += extracted.stackSize;
+                        target.setInventorySlotContents(mappedSlot, existing);
+                    }
+                }
+                // else already has enough → do nothing
+            } else {
+                // Slot has wrong item → skip
+            }
+        }
+
+        target.markDirty();
+        markDirty();
+    }
+
+    /**
+     * Extracts up to 'amount' of items matching 'filter' from the internal inventory.
+     */
+    public ItemStack extractFromInternal(ItemStack filter, int amount) {
+        if (filter == null || amount <= 0) return null;
+
+        ItemStack result = null;
+        int remaining = amount;
+
+        for (int i = 0; i < internalInventory.length; i++) {
+            ItemStack stack = internalInventory[i];
+            if (stack == null) continue;
+
+            if (stack.isItemEqual(filter) && ItemStack.areItemStackTagsEqual(stack, filter)) {
+                int toTake = Math.min(stack.stackSize, remaining);
+
+                if (result == null) {
+                    result = stack.copy();
+                    result.stackSize = toTake;
+                } else {
+                    result.stackSize += toTake;
+                }
+
+                stack.stackSize -= toTake;
+                if (stack.stackSize <= 0) internalInventory[i] = null;
+
+                remaining -= toTake;
+                if (remaining <= 0) break;
+            }
+        }
+
+        if (result != null) markDirty();
+        return result;
+    }
+
+
 
 
     // Helper to get a unique key for an ItemStack
@@ -306,7 +316,7 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
                 backing[index] = stack != null ? stack.copy() : null;
             }
         }
-    }    
+    }
     
     // --- IInventory methods ---
     @Override
