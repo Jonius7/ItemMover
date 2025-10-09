@@ -166,46 +166,6 @@ public class ContainerItemMover extends Container {
         return itemstack;
     }
     
-    /*
-    @Override
-    protected boolean mergeItemStack(ItemStack stack, int startIndex, int endIndex, boolean reverse) {
-        boolean merged = false;
-
-        int i = reverse ? endIndex - 1 : startIndex;
-        int step = reverse ? -1 : 1;
-
-        while ((reverse ? i >= startIndex : i < endIndex) && stack != null && stack.stackSize > 0) {
-            Slot slot = (Slot) this.inventorySlots.get(i);
-
-            // --- Handle ghost slots specially ---
-            if (slot instanceof SlotGhost) {
-                ItemStack current = slot.getStack();
-
-                if (current == null) {
-                    // Put a copy of the held stack
-                    slot.putStack(stack.copy());
-                    merged = true;
-                    break; // ghost slots only take one operation per shift-click
-                } else if (current.isItemEqual(stack) &&
-                           ItemStack.areItemStackTagsEqual(current, stack)) {
-                    // Increment size without consuming the held stack
-                    current.stackSize = Math.min(current.getMaxStackSize(), current.stackSize + stack.stackSize);
-                    slot.putStack(current);
-                    merged = true;
-                    break;
-                }
-            } else {
-                // Normal slot behavior for internal/inventory slots
-                merged |= super.mergeItemStack(stack, i, i + 1, false);
-            }
-
-            i += step;
-        }
-
-        return merged;
-    }
-	*/
-    
     @Override
     protected boolean mergeItemStack(ItemStack stack, int startIndex, int endIndex, boolean reverse) {
         // Prevent vanilla merging into ghost slots
@@ -225,23 +185,17 @@ public class ContainerItemMover extends Container {
             if (slot instanceof SlotGhost) {
             	ItemStack current = slot.getStack();
                 ItemStack held = player.inventory.getItemStack();
-                boolean isShiftDown = false;
-                if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
-                	isShiftDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
-                }
                 
                 // Shift-click
-                if (isShiftDown) {
-                	//System.out.println("SELECTING SLOT ID + SHIFT: " + slotId);
+                if (modifier == 1) {
                     if (held != null) {
-                        slot.putStack(held.copy()); // full stack copy
+                        slot.putStack(held.copy());
                     } else {
                         slot.putStack(null);
                     }
                     tile.markDirty();
-                    // Important: Tell the client we handled the click
-                    detectAndSendChanges(); // updates the container for all viewers
-                    return held; // don't consume
+                    detectAndSendChanges();
+                    return held;
                 } else if (mouseButton == 0) { // Left click
                     if (held != null) {
                         if (current != null && current.isItemEqual(held) &&

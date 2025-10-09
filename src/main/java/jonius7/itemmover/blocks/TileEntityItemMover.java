@@ -62,9 +62,12 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         }
     }
     
-    // Pulling Items Methods
+    /**
+     * Attempts to pull items from input block to the internal inventory
+     * according to ghost slot configuration and slot mappings.
+     */
     public void tryPullItems() {
-    	// --- Get the adjacent inventory on the input side ---
+        // 1. Get the adjacent inventory on the input side
         ForgeDirection dir = ForgeDirection.getOrientation(inputSide);
         TileEntity adjacent = worldObj.getTileEntity(
                 xCoord + dir.offsetX,
@@ -74,57 +77,66 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         if (!(adjacent instanceof IInventory)) return;
         IInventory source = (IInventory) adjacent;
 
-        // --- Step 1: Combine duplicate ghost slots ---
-        Map<String, Integer> desiredMap = new HashMap<>();
-        Map<String, ItemStack> representative = new HashMap<>();
-        for (ItemStack filter : ghostPull) {
-            if (filter == null) continue;
-            String key = getItemKey(filter);
-            int count = desiredMap.getOrDefault(key, 0);
-            desiredMap.put(key, count + filter.stackSize);
-            representative.put(key, filter);
-        }
+        // --- Step 2: Iterate over each ghost slot (which corresponds to one source slot) ---
+        for (int ghostIndex = 0; ghostIndex < ghostPull.length; ghostIndex++) {
+            ItemStack ghostFilter = ghostPull[ghostIndex];
 
-        // --- Step 2: For each unique desired item ---
-        for (Map.Entry<String, Integer> entry : desiredMap.entrySet()) {
-            ItemStack filter = representative.get(entry.getKey());
-            int desired = entry.getValue();
+            // A. Check if the ghost slot is configured (not null)
+            if (ghostFilter == null) continue;
+            
+            // B. Define the corresponding source slot
+            int srcSlot = ghostIndex; 
+            if (srcSlot < 0 || srcSlot >= source.getSizeInventory()) continue; 
 
-            // --- Count existing items in internal inventory ---
-            int current = countMatchingInInternal(filter);
-
-            // --- Include held stack if a player is viewing this block ---
-            ItemStack held = getHeldStackIfViewerMatches(filter);
-            if (held != null) current += held.stackSize;
-
-            // --- Already satisfied? Skip ---
-            if (current >= desired) continue;
-            int needed = desired - current;
-
-            // --- Step 3: Pull from source inventory ---
-            for (int srcSlot = 0; srcSlot < source.getSizeInventory(); srcSlot++) {
-                ItemStack srcStack = source.getStackInSlot(srcSlot);
-                if (srcStack == null) continue;
-
-                if (srcStack.isItemEqual(filter) &&
-                    ItemStack.areItemStackTagsEqual(srcStack, filter)) {
-
-                    int toMove = Math.min(srcStack.stackSize, needed);
-                    ItemStack extracted = srcStack.splitStack(toMove);
-
-                    // --- Insert into your internal inventory ---
-                    insertIntoInternal(extracted);
-
-                    // --- Update source inventory ---
-                    if (srcStack.stackSize <= 0) source.setInventorySlotContents(srcSlot, null);
-                    else source.setInventorySlotContents(srcSlot, srcStack);
-
-                    source.markDirty();
-                    needed -= toMove;
-
-                    if (needed <= 0) break;
+            ItemStack srcStack = source.getStackInSlot(srcSlot);
+            
+            // C. Check if the source slot has the matching item
+            if (srcStack == null) continue;
+            if (!srcStack.isItemEqual(ghostFilter) || !ItemStack.areItemStackTagsEqual(srcStack, ghostFilter)) continue;
+            
+            // D. Calculate the need for THIS specific ghost slot's target
+            
+            // The total count of the item currently in the internal inventory (Global Count)
+            int currentCount = countMatchingInInternal(ghostFilter); 
+            
+            // The target count for THIS specific item type is the sum of ALL ghost slots.
+          
+            // Re-calculate the total desired count for this item type across ALL ghost slots
+            int totalDesired = 0;
+            for (ItemStack otherFilter : ghostPull) {
+                if (otherFilter != null && otherFilter.isItemEqual(ghostFilter) &&
+                    ItemStack.areItemStackTagsEqual(otherFilter, ghostFilter)) {
+                    totalDesired += otherFilter.stackSize;
                 }
             }
+            
+            // If we have already met the total requirement for this item type, skip pulling.
+            if (currentCount >= totalDesired) continue;
+            
+            // The maximum amount we are allowed to pull across all sources.
+            int needed = totalDesired - currentCount; 
+
+            // E. Pull the item from the corresponding source slot (srcSlot)
+            
+            // Pull whatever is available in the source stack, up to the global need limit.
+            int toMove = Math.min(srcStack.stackSize, needed);
+            
+            // Check if there is anything to pull from this specific source slot
+            if (toMove <= 0) continue; 
+            
+            // Extract items from the restricted source slot
+            ItemStack extracted = srcStack.splitStack(toMove);
+
+            // Insert into internal inventory
+            insertIntoInternal(extracted);
+
+            // Update source inventory
+            if (srcStack.stackSize <= 0) source.setInventorySlotContents(srcSlot, null);
+            else source.setInventorySlotContents(srcSlot, srcStack);
+
+            source.markDirty();
+
+            currentCount += extracted.stackSize; // Update the effective internal count
         }
 
         markDirty(); // mark TileEntity dirty for saving & updates
@@ -133,7 +145,6 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     /**
      * Attempts to push items from internal inventory to the output block
      * according to ghost slot configuration and slot mappings.
-     * Call this from updateEntity() on the server side.
      */
     public void tryPushItems() {
         // --- Find adjacent inventory on the output side ---
