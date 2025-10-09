@@ -50,7 +50,7 @@ public class GuiItemMover extends GuiContainer {
             int x = guiLeft + pullStartX + col * spacingX;
             int y = guiTop + pullStartY + row * spacingY;
 
-            GuiButton btn = new GuiButton(100 + i, x, y, buttonWidth, buttonHeight, "" + (i));
+            GuiButton btn = new GuiButton(100 + i, x, y, buttonWidth, buttonHeight, "" + (tile.getPullSlotMapping(i)));
             this.buttonList.add(btn);
         }
         
@@ -60,7 +60,7 @@ public class GuiItemMover extends GuiContainer {
             int x = guiLeft + pushStartX + col * spacingX;
             int y = guiTop + pushStartY + row * spacingY;
 
-            GuiButton btn = new GuiButton(112 + i, x, y, buttonWidth, buttonHeight, "" + (i));
+            GuiButton btn = new GuiButton(112 + i, x, y, buttonWidth, buttonHeight, "" + (tile.getPushSlotMapping(i)));
             this.buttonList.add(btn);
         }
        
@@ -110,12 +110,13 @@ public class GuiItemMover extends GuiContainer {
             
             if (inv != null && inv.getSizeInventory() > 0) {
                 int currentMapping = tile.getPullSlotMapping(ghostIndex);
-                int nextMapping = (currentMapping - 1) % inv.getSizeInventory();
-                tile.setPullSlotMapping(ghostIndex, nextMapping);
-                button.displayString = String.valueOf(nextMapping);
-
-                // Disable button if mapping is now out of bounds
-                button.enabled = nextMapping < inv.getSizeInventory();
+                if (currentMapping < inv.getSizeInventory()) {
+	                int nextMapping = (currentMapping - 1) % inv.getSizeInventory();
+	                tile.setPullSlotMapping(ghostIndex, nextMapping);
+	                button.displayString = String.valueOf(nextMapping);
+                } else {
+                	button.enabled = false;
+                }
             } else {
                 // Disable if no inventory exists
                 button.enabled = false;
