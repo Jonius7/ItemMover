@@ -55,7 +55,7 @@ public class ContainerItemMover extends Container {
         ghostPushSlots = new SlotGhost[pushSize];
 
         // --- Pull Ghost slots (3x4 grid) ---
-        int pullStartX = 8;
+        int pullStartX = 17;
         int pullStartY = 45;
         int pullSpacingX = 32;
         int pullSpacingY = 20;
@@ -72,7 +72,7 @@ public class ContainerItemMover extends Container {
         }
         
         // --- Push Ghost slots (3x4 grid) ---
-        int pushStartX = 135;
+        int pushStartX = 146;
         int pushStartY = 45;
         int pushSpacingX = 32;
         int pushSpacingY = 20;

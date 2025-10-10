@@ -35,9 +35,9 @@ public class GuiItemMover extends GuiContainer {
         int guiTop = (this.height - this.ySize) / 2;
 
         // Pull + Push Slot Buttons
-        int pullStartX = 26;
+        int pullStartX = 35;
         int pullStartY = 50;
-        int pushStartX = 153;
+        int pushStartX = 164;
         int pushStartY = 50;
         int buttonWidth = 12;
         int buttonHeight = 10;
@@ -65,8 +65,8 @@ public class GuiItemMover extends GuiContainer {
         }
        
         // Side Selection Buttons
-        this.buttonList.add(new GuiButton(0, guiLeft + 40, guiTop + 20, 60, 20, getSideName(tile.getInputSide())));
-        this.buttonList.add(new GuiButton(1, guiLeft + 167, guiTop + 20, 60, 20, getSideName(tile.getOutputSide())));
+        this.buttonList.add(new GuiButton(0, guiLeft + 50, guiTop + 19, 60, 20, getSideName(tile.getInputSide())));
+        this.buttonList.add(new GuiButton(1, guiLeft + 179, guiTop + 19, 60, 20, getSideName(tile.getOutputSide())));
     }
     
     private String getSideName(int side) {
@@ -208,8 +208,8 @@ public class GuiItemMover extends GuiContainer {
         fontRendererObj.drawString("Input Side: " + TileEntityItemMover.getSideName(tile.getInputSide()), 110, 20, 0x404040);
         fontRendererObj.drawString("Output Side: " + TileEntityItemMover.getSideName(tile.getOutputSide()), 110, 50, 0x404040);
     	*/
-        fontRendererObj.drawString("Pull", 10, 20, 0x404040);
-        fontRendererObj.drawString("Push", 137, 20, 0x404040);
+        fontRendererObj.drawString("Pull", 22, 25, 0x404040);
+        fontRendererObj.drawString("Push", 149, 25, 0x404040);
     }
 
     @Override
