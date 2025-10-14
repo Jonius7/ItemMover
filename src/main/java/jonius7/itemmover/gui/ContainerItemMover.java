@@ -1,8 +1,5 @@
 package jonius7.itemmover.gui;
 
-import org.lwjgl.input.Keyboard;
-
-import cpw.mods.fml.common.FMLCommonHandler;
 import jonius7.itemmover.blocks.TileEntityItemMover;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.InventoryPlayer;

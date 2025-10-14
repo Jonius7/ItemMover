@@ -7,7 +7,6 @@ import jonius7.itemmover.gui.ContainerItemMover;
 import jonius7.itemmover.gui.SimpleInventory;
 import jonius7.itemmover.gui.SimpleInventoryGhost;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -37,6 +36,9 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     private final int NUMBER_OF_GHOST_SLOTS = 12;
     private int[] pullSlotMapping;
     private int[] pushSlotMapping;
+    
+    // Smart push mode to wait for all ghost slot items to be in internal inventory
+    private boolean pushMode = false;
     
     public TileEntityItemMover() {
     	super();
@@ -157,7 +159,12 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
 
         if (!(adjacent instanceof IInventory)) return;
         IInventory target = (IInventory) adjacent;
-
+        
+        // If Smart Mode Toggle is on
+        if (pushMode && !areAllGhostPushRequirementsMet()) {
+            return; // wait until all required items are present
+        }
+        
         // --- Loop through ghostPush slots ---
         for (int ghostIndex = 0; ghostIndex < ghostPush.length; ghostIndex++) {
             ItemStack filter = ghostPush[ghostIndex];
@@ -193,6 +200,68 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     }
 
     /**
+     * Returns true if, for every unique item listed in ghostPush,
+     * the total count of that item across the internal inventory is
+     * >= the total desired count (sum of stackSizes in all push ghost slots).
+     */
+    private boolean areAllGhostPushRequirementsMet() {
+        // --- 1) Build desired totals from push ghost slots ---
+        Map<String, Integer> desired = new HashMap<>();
+        Map<String, ItemStack> representative = new HashMap<>();
+        for (ItemStack ghost : ghostPush) {
+            if (ghost == null) continue;
+            String key = getItemKey(ghost);
+            int want = desired.getOrDefault(key, 0);
+            desired.put(key, want + ghost.stackSize);
+            if (!representative.containsKey(key)) representative.put(key, ghost);
+        }
+
+        // If no push ghosts configured, consider requirement met
+        if (desired.isEmpty()) return true;
+
+        // --- 2) Count totals present in internal inventory ---
+        Map<String, Integer> have = new HashMap<>();
+        for (ItemStack in : internalInventory) {
+            if (in == null) continue;
+            String key = getItemKey(in);
+            int cur = have.getOrDefault(key, 0);
+            have.put(key, cur + in.stackSize);
+        }
+
+        // Optionally include held stack by viewer if your design requires it:
+        // for (Map.Entry<String, ItemStack> rep : representative.entrySet()) {
+        //     ItemStack held = getHeldStackIfViewerMatches(rep.getValue());
+        //     if (held != null) {
+        //         String key = rep.getKey();
+        //         have.put(key, have.getOrDefault(key, 0) + held.stackSize);
+        //     }
+        // }
+
+        // --- 3) Compare desired vs have ---
+        for (Map.Entry<String, Integer> e : desired.entrySet()) {
+            String key = e.getKey();
+            int want = e.getValue();
+            int got = have.getOrDefault(key, 0);
+            if (got < want) return false; // not enough of this item
+        }
+
+        return true; // all requirements satisfied
+    }
+
+    
+    // Helper: produce a string key for an ItemStack that includes item id, damage and NBT
+    private String getItemKey(ItemStack stack) {
+        if (stack == null) return "null";
+        StringBuilder sb = new StringBuilder();
+        sb.append(stack.getItem().getUnlocalizedName()); // or use GameData.getItemRegistry().getNameForObject(...) if available
+        sb.append(":").append(stack.getItemDamage());
+        if (stack.hasTagCompound()) {
+            sb.append(":").append(stack.getTagCompound().toString());
+        }
+        return sb.toString();
+    }
+
+    /**
      * Extracts up to 'amount' of items matching 'filter' from the internal inventory.
      */
     public ItemStack extractFromInternal(ItemStack filter, int amount) {
@@ -225,17 +294,7 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
 
         if (result != null) markDirty();
         return result;
-    }
-
-
-
-
-    // Helper to get a unique key for an ItemStack
-    private String getItemKey(ItemStack stack) {
-        if (stack == null) return "null";
-        int id = Item.getIdFromItem(stack.getItem());
-        return id + ":" + stack.getItemDamage();
-    }
+    }    
     
     // Helper to count matching items in internal inventory
     private int countMatchingInInternal(ItemStack filter) {
@@ -475,12 +534,10 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     @Override
     public void writeToNBT(NBTTagCompound compound) {
         super.writeToNBT(compound);
-        //System.out.println("WRITE sides: " + inputSide + "," + outputSide);
         compound.setInteger("InputSide", inputSide);
         compound.setInteger("OutputSide", outputSide);
         compound.setIntArray("GhostPullSlotNumbers", ghostPullSlotNumbers);
         compound.setIntArray("GhostPullSlotNumbers", ghostPushSlotNumbers);
-        //System.out.println("WRITE sides: " + inputSide + "," + outputSide);
         // Internal inventory
         for (int i = 0; i < internalInventory.length; i++) {
             if (internalInventory[i] != null) {
@@ -531,28 +588,24 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             pushMappingList.appendTag(tag);
         }
         compound.setTag("PushSlotMapping", pushMappingList);
+        
+        compound.setBoolean("PushMode", pushMode);
     }
 
 
     @Override
     public void readFromNBT(NBTTagCompound compound) {
         super.readFromNBT(compound);
-        //System.out.println("READ sides: " + inputSide + "," + outputSide);
         // Ensure arrays exist
         if (ghostPull == null) ghostPull = new ItemStack[12];
         if (ghostPush == null) ghostPush = new ItemStack[12];
         if (internalInventory == null) internalInventory = new ItemStack[18];
 
-        if (compound.hasKey("InputSide")) {
-            inputSide = compound.getInteger("InputSide");
-        }
-        if (compound.hasKey("OutputSide")) {
-            outputSide = compound.getInteger("OutputSide");
-        }
+        if (compound.hasKey("InputSide")) inputSide = compound.getInteger("InputSide");
+        if (compound.hasKey("OutputSide")) outputSide = compound.getInteger("OutputSide");
         if (compound.hasKey("GhostPullSlotNumbers")) ghostPullSlotNumbers = compound.getIntArray("GhostPullSlotNumbers");
         if (compound.hasKey("GhostPushSlotNumbers")) ghostPushSlotNumbers = compound.getIntArray("GhostPushSlotNumbers");
         
-        //System.out.println("READ sides: " + inputSide + "," + outputSide);
         for (int i = 0; i < internalInventory.length; i++) {
             String key = "InternalSlot" + i;
             if (compound.hasKey(key)) {
@@ -593,6 +646,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             int ghostIndex = tag.getInteger("GhostIndex");
             pushSlotMapping[ghostIndex] = tag.getInteger("SlotNumber");
         }
+        
+        if (compound.hasKey("PushMode")) pushMode = compound.getBoolean("PushMode");
     }
 
     // --- Config getters/setters ---
@@ -685,5 +740,23 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         TileEntity te = worldObj.getTileEntity(x, y, z);
         if (te instanceof IInventory) return (IInventory) te;
         return null;
+    }
+    
+    public int getSizeInternalInventory() {
+        return internalInventory.length;
+    }
+
+    public ItemStack getInternalStackInSlot(int slot) {
+        if (slot < 0 || slot >= internalInventory.length) return null;
+        return internalInventory[slot];
+    }
+    
+    public boolean getPushMode() {
+        return pushMode;
+    }
+
+    public void setPushMode(boolean value) {
+        pushMode = value;
+        markDirty();
     }
 }

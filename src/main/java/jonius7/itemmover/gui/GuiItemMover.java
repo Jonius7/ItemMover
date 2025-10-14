@@ -4,12 +4,12 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import jonius7.itemmover.ItemMover;
 import jonius7.itemmover.blocks.TileEntityItemMover;
+import jonius7.itemmover.network.PacketTogglePushMode;
 import jonius7.itemmover.network.PacketUpdateItemMover;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.inventory.IInventory;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -18,6 +18,7 @@ public class GuiItemMover extends GuiContainer {
 
     private static final ResourceLocation GUI_TEXTURE = new ResourceLocation("itemmover", "textures/gui/item_mover.png");
     private final TileEntityItemMover tile;
+    private GuiButton buttonRequireSet;
 
     public GuiItemMover(InventoryPlayer playerInv, TileEntityItemMover tile) {
         super(new ContainerItemMover(playerInv, tile));
@@ -67,6 +68,13 @@ public class GuiItemMover extends GuiContainer {
         // Side Selection Buttons
         this.buttonList.add(new GuiButton(0, guiLeft + 50, guiTop + 19, 60, 20, getSideName(tile.getInputSide())));
         this.buttonList.add(new GuiButton(1, guiLeft + 179, guiTop + 19, 60, 20, getSideName(tile.getOutputSide())));
+        
+        // Smart Push button
+        int requireX = guiLeft + 210;
+        int requireY = guiTop + 173; // adjust position
+        buttonRequireSet = new GuiButton(200, requireX, requireY, 80, 20,
+            tile.getPushMode() ? "Smart Push: ON" : "Smart Push: OFF");
+        buttonList.add(buttonRequireSet);
     }
     
     private String getSideName(int side) {
@@ -147,6 +155,14 @@ public class GuiItemMover extends GuiContainer {
         } else if (button.id == 1) {
             tile.cycleOutputSide(true);
             button.displayString = getSideName(tile.getOutputSide());
+        } else if (button.id == 200) {
+            boolean newState = !tile.getPushMode();
+            tile.setPushMode(newState);
+            button.displayString = newState ? "Smart Push: ON" : "Smart Push: OFF";
+            ItemMover.network.sendToServer(
+                new PacketTogglePushMode(tile.xCoord, tile.yCoord, tile.zCoord)
+            );
+            return;
         }/* else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
             int ghostIndex = button.id - 100;
             IInventory inv = tile.getInputInventory();

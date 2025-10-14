@@ -6,8 +6,6 @@ import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
 import jonius7.itemmover.blocks.TileEntityItemMover;
-import jonius7.itemmover.gui.GuiItemMover;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
@@ -19,6 +17,7 @@ public class PacketUpdateItemMover implements IMessage {
     public int inputSide, outputSide;
     private ItemStack[] ghostPull;
     private ItemStack[] ghostPush;
+    public boolean pushMode;
 
     // --- Empty constructor required ---
     public PacketUpdateItemMover() {}
@@ -28,10 +27,9 @@ public class PacketUpdateItemMover implements IMessage {
         this.x = te.xCoord;
         this.y = te.yCoord;
         this.z = te.zCoord;
-        //this.inputSlot = te.getInputSlot();
-        //this.outputSlot = te.getOutputSlot();
         this.inputSide = te.getInputSide();
         this.outputSide = te.getOutputSide();
+        this.pushMode = te.getPushMode();
         this.setGhostPull(te.getGhostPull());
         this.setGhostPush(te.getGhostPush());
     }
@@ -43,6 +41,7 @@ public class PacketUpdateItemMover implements IMessage {
         z = buf.readInt();
         inputSide = buf.readInt();
         outputSide = buf.readInt();
+        pushMode = buf.readBoolean();
         
         int pullLen = buf.readInt();
         setGhostPull(new ItemStack[pullLen]);
@@ -64,6 +63,7 @@ public class PacketUpdateItemMover implements IMessage {
         buf.writeInt(z);
         buf.writeInt(inputSide);
         buf.writeInt(outputSide);
+        buf.writeBoolean(pushMode);
         
         // Write pull ghost slots
         buf.writeInt(getGhostPull().length);
@@ -123,7 +123,7 @@ public class PacketUpdateItemMover implements IMessage {
 	            // Copy arrays to avoid reference issues
 	            mover.setInputSide(message.getInputSide());
 	            mover.setOutputSide(message.getOutputSide());
-	            
+	            mover.setPushMode(message.pushMode);
 	            mover.setGhostPull(message.getGhostPull());
 	            mover.setGhostPush(message.getGhostPush());
 	            mover.markDirty();
