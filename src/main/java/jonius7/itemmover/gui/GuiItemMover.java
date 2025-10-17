@@ -112,63 +112,17 @@ public class GuiItemMover extends GuiContainer {
                     handleRightClickButton(button);
                     playButtonSound();
                 }
+                else if (mouseButton == 2) {
+                    // Middle click - reset slot butons
+                    handleMiddleClickButton(button);
+                    playButtonSound();
+                }
                 return; // stop processing further clicks
             }
         }
 
         // Let other GUI elements (like slots) handle clicks normally
         super.mouseClicked(mouseX, mouseY, mouseButton);
-    }
-
-    private void handleRightClickButton(GuiButton button) {
-        if (button.id == 0) {
-            tile.cycleInputSide(false); // backwards
-            tile.validateSlotMappings();
-            refreshSlotButtons();
-            button.displayString = getSideName(tile.getInputSide());
-        } else if (button.id == 1) {
-            tile.cycleOutputSide(false); // backwards
-            tile.validateSlotMappings();
-            refreshSlotButtons();
-            button.displayString = getSideName(tile.getOutputSide());
-        } else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
-            int ghostIndex = button.id - 100;
-            IInventory inv = tile.getInputInventory();
-
-            if (inv != null && inv.getSizeInventory() > 0) {
-                int invSize = inv.getSizeInventory();
-                int currentMapping = tile.getPullSlotMapping(ghostIndex);
-                // Cycle backwards through available slots
-                int nextMapping = (currentMapping - 1 + invSize) % invSize;
-
-                tile.setPullSlotMapping(ghostIndex, nextMapping);
-                button.displayString = String.valueOf(nextMapping);
-
-                // Send to server
-                ItemMover.network.sendToServer(new PacketSetSlotMapping(tile, true, ghostIndex, nextMapping));
-            } else {
-                button.enabled = false;
-            }
-        } else if (button.id >= 112 && button.id < 124) { // Push slot buttons
-            int ghostIndex = button.id - 112;
-            IInventory inv = tile.getOutputInventory();
-
-            if (inv != null && inv.getSizeInventory() > 0) {
-                int invSize = inv.getSizeInventory();
-                int currentMapping = tile.getPushSlotMapping(ghostIndex);
-                // Cycle backwards through available slots
-                int nextMapping = (currentMapping - 1 + invSize) % invSize;
-
-                tile.setPushSlotMapping(ghostIndex, nextMapping);
-                button.displayString = String.valueOf(nextMapping);
-
-                // Send to server
-                ItemMover.network.sendToServer(new PacketSetSlotMapping(tile, false, ghostIndex, nextMapping));
-            } else {
-                button.enabled = false;
-            }
-        }
-        ItemMover.network.sendToServer(new PacketUpdateItemMover(tile));
     }
     
     @Override
@@ -223,6 +177,85 @@ public class GuiItemMover extends GuiContainer {
             }
         }
     	ItemMover.network.sendToServer(new PacketUpdateItemMover(tile));
+    }
+    
+    private void handleRightClickButton(GuiButton button) {
+        if (button.id == 0) {
+            tile.cycleInputSide(false); // backwards
+            tile.validateSlotMappings();
+            refreshSlotButtons();
+            button.displayString = getSideName(tile.getInputSide());
+        } else if (button.id == 1) {
+            tile.cycleOutputSide(false); // backwards
+            tile.validateSlotMappings();
+            refreshSlotButtons();
+            button.displayString = getSideName(tile.getOutputSide());
+        } else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
+            int ghostIndex = button.id - 100;
+            IInventory inv = tile.getInputInventory();
+
+            if (inv != null && inv.getSizeInventory() > 0) {
+                int invSize = inv.getSizeInventory();
+                int currentMapping = tile.getPullSlotMapping(ghostIndex);
+                // Cycle backwards through available slots
+                int nextMapping = (currentMapping - 1 + invSize) % invSize;
+
+                tile.setPullSlotMapping(ghostIndex, nextMapping);
+                button.displayString = String.valueOf(nextMapping);
+
+                // Send to server
+                ItemMover.network.sendToServer(new PacketSetSlotMapping(tile, true, ghostIndex, nextMapping));
+            } else {
+                button.enabled = false;
+            }
+        } else if (button.id >= 112 && button.id < 124) { // Push slot buttons
+            int ghostIndex = button.id - 112;
+            IInventory inv = tile.getOutputInventory();
+
+            if (inv != null && inv.getSizeInventory() > 0) {
+                int invSize = inv.getSizeInventory();
+                int currentMapping = tile.getPushSlotMapping(ghostIndex);
+                // Cycle backwards through available slots
+                int nextMapping = (currentMapping - 1 + invSize) % invSize;
+
+                tile.setPushSlotMapping(ghostIndex, nextMapping);
+                button.displayString = String.valueOf(nextMapping);
+
+                // Send to server
+                ItemMover.network.sendToServer(new PacketSetSlotMapping(tile, false, ghostIndex, nextMapping));
+            } else {
+                button.enabled = false;
+            }
+        }
+        ItemMover.network.sendToServer(new PacketUpdateItemMover(tile));
+    }
+    
+    public void handleMiddleClickButton(GuiButton button) {
+        // Skip disabled buttons
+        if (!button.enabled) return;
+
+        if (button.id >= 100 && button.id < 112) { // Pull slot buttons
+            int ghostIndex = button.id - 100;
+            int defaultSlot = ghostIndex; // Default: button N = slot N
+            tile.setPullSlotMapping(ghostIndex, defaultSlot);
+            button.displayString = String.valueOf(defaultSlot);
+
+            // Send update to server
+            ItemMover.network.sendToServer(
+                new PacketSetSlotMapping(tile, true, ghostIndex, defaultSlot)
+            );
+        } 
+        else if (button.id >= 112 && button.id < 124) { // Push slot buttons
+            int ghostIndex = button.id - 112;
+            int defaultSlot = ghostIndex; // Default: button N = slot N
+            tile.setPushSlotMapping(ghostIndex, defaultSlot);
+            button.displayString = String.valueOf(defaultSlot);
+
+            // Send update to server
+            ItemMover.network.sendToServer(
+                new PacketSetSlotMapping(tile, false, ghostIndex, defaultSlot)
+            );
+        }
     }
     
     /** Play the standard GUI button press sound (1.7.10-friendly) */
