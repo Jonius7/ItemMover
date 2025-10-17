@@ -55,7 +55,7 @@ public class ItemMover implements IGuiHandler {
         network = NetworkRegistry.INSTANCE.newSimpleChannel("itemmover");
         network.registerMessage(PacketUpdateItemMover.Handler.class, PacketUpdateItemMover.class, 0, Side.SERVER);
         network.registerMessage(PacketTogglePushMode.Handler.class, PacketTogglePushMode.class, 1, Side.SERVER);
-        network.registerMessage(PacketSetSlotMapping.Handler.class, PacketSetSlotMapping.class, 1, Side.SERVER);
+        network.registerMessage(PacketSetSlotMapping.Handler.class, PacketSetSlotMapping.class, 2, Side.SERVER);
 
         itemMover = new BlockItemMover();
         GameRegistry.registerBlock(itemMover, "itemMover");
