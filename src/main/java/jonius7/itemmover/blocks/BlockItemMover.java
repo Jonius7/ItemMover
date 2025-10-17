@@ -5,6 +5,7 @@ import java.util.Random;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -38,6 +39,19 @@ public class BlockItemMover extends BlockContainer {
             player.openGui(jonius7.itemmover.ItemMover.instance, 0, world, x, y, z);
         }
         return true;
+    }
+    
+    @Override
+    public void onBlockPlacedBy(World world, int x, int y, int z,
+                                EntityLivingBase placer, ItemStack stack) {
+        super.onBlockPlacedBy(world, x, y, z, placer, stack);
+
+        TileEntity te = world.getTileEntity(x, y, z);
+        if (te instanceof TileEntityItemMover) {
+            TileEntityItemMover mover = (TileEntityItemMover) te;
+            mover.validateSlotMappings();
+            mover.markDirty();
+        }
     }
     
     @Override

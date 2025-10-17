@@ -56,6 +56,29 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         
     }
     
+    public void validateSlotMappings() {
+        IInventory inputInv = getInputInventory();
+        IInventory outputInv = getOutputInventory();
+
+        int inputSize = (inputInv != null) ? inputInv.getSizeInventory() : 0;
+        int outputSize = (outputInv != null) ? outputInv.getSizeInventory() : 0;
+
+        // Pull mappings
+        for (int i = 0; i < pullSlotMapping.length; i++) {
+            if (pullSlotMapping[i] >= inputSize) {
+                pullSlotMapping[i] = i; // reset to 0 if out of range
+            }
+        }
+
+        // Push mappings
+        for (int i = 0; i < pushSlotMapping.length; i++) {
+            if (pushSlotMapping[i] >= outputSize) {
+                pushSlotMapping[i] = i;
+            }
+        }
+    }
+
+    
     @Override
     public void updateEntity() {
     	if (!worldObj.isRemote) {
@@ -87,7 +110,7 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             if (ghostFilter == null) continue;
             
             // B. Define the corresponding source slot
-            int srcSlot = ghostIndex; 
+            int srcSlot = getPullSlotMapping(ghostIndex);
             if (srcSlot < 0 || srcSlot >= source.getSizeInventory()) continue; 
 
             ItemStack srcStack = source.getStackInSlot(srcSlot);
@@ -697,23 +720,39 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         }
         markDirty();
     }
-    
-    public int getPullSlotMapping(int ghostIndex) {
-        return pullSlotMapping[ghostIndex];
+
+    public int getPullSlotMapping(int index) {
+        if (pullSlotMapping == null || pullSlotMapping.length == 0) return 0;
+        if (index < 0) return 0;
+        if (index >= pullSlotMapping.length) return pullSlotMapping.length - 1; // clamp
+        return pullSlotMapping[index];
     }
 
-    public void setPullSlotMapping(int ghostIndex, int slotNumber) {
-        pullSlotMapping[ghostIndex] = slotNumber;
-        markDirty();
+    public void setPullSlotMapping(int index, int value) {
+        if (pullSlotMapping == null) return;
+        if (index < 0 || index >= pullSlotMapping.length) return;
+        pullSlotMapping[index] = value;
     }
 
-    public int getPushSlotMapping(int ghostIndex) {
-        return pushSlotMapping[ghostIndex];
+    public int getPushSlotMapping(int index) {
+        if (pushSlotMapping == null || pushSlotMapping.length == 0) return 0;
+        if (index < 0) return 0;
+        if (index >= pushSlotMapping.length) return pushSlotMapping.length - 1; // clamp
+        return pushSlotMapping[index];
     }
 
-    public void setPushSlotMapping(int ghostIndex, int slotNumber) {
-        pushSlotMapping[ghostIndex] = slotNumber;
-        markDirty();
+    public void setPushSlotMapping(int index, int value) {
+        if (pushSlotMapping == null) return;
+        if (index < 0 || index >= pushSlotMapping.length) return;
+        pushSlotMapping[index] = value;
+    }
+
+    // Optional helpers to expose lengths
+    public int getPullMappingLength() {
+        return pullSlotMapping == null ? 0 : pullSlotMapping.length;
+    }
+    public int getPushMappingLength() {
+        return pushSlotMapping == null ? 0 : pushSlotMapping.length;
     }
     
     public int getInternalInventoryLength () {

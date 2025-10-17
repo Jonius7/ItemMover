@@ -17,6 +17,7 @@ import jonius7.itemmover.blocks.BlockItemMover;
 import jonius7.itemmover.blocks.TileEntityItemMover;
 import jonius7.itemmover.gui.ContainerItemMover;
 import jonius7.itemmover.gui.GuiItemMover;
+import jonius7.itemmover.network.PacketSetSlotMapping;
 import jonius7.itemmover.network.PacketTogglePushMode;
 import jonius7.itemmover.network.PacketUpdateItemMover;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
@@ -35,7 +36,7 @@ public class ItemMover implements IGuiHandler {
     public static SimpleNetworkWrapper network;
 	
 	public static final String MODID = "itemmover";
-    public static final String VERSION = "0.4.2";
+    public static final String VERSION = "0.4.5";
 	
     public static Block itemMover;
     
@@ -54,6 +55,7 @@ public class ItemMover implements IGuiHandler {
         network = NetworkRegistry.INSTANCE.newSimpleChannel("itemmover");
         network.registerMessage(PacketUpdateItemMover.Handler.class, PacketUpdateItemMover.class, 0, Side.SERVER);
         network.registerMessage(PacketTogglePushMode.Handler.class, PacketTogglePushMode.class, 1, Side.SERVER);
+        network.registerMessage(PacketSetSlotMapping.Handler.class, PacketSetSlotMapping.class, 1, Side.SERVER);
 
         itemMover = new BlockItemMover();
         GameRegistry.registerBlock(itemMover, "itemMover");
