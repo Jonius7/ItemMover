@@ -3,6 +3,8 @@ package jonius7.itemmover.gui;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.lwjgl.input.Keyboard;
+
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import jonius7.itemmover.ItemMover;
@@ -150,8 +152,11 @@ public class GuiItemMover extends GuiContainer {
             IInventory inv = tile.getInputInventory();
 
             if (inv != null && inv.getSizeInventory() > 0) {
+            	boolean ctrl = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL);
                 int currentMapping = tile.getPullSlotMapping(ghostIndex);
-                int nextMapping = (currentMapping + 1) % inv.getSizeInventory();
+                int step = ctrl ? 5 : 1; // Ctrl increases by 5
+                int nextMapping = (currentMapping + step) % inv.getSizeInventory();
+                
                 tile.setPullSlotMapping(ghostIndex, nextMapping);
                 button.displayString = String.valueOf(nextMapping);
 
@@ -165,8 +170,11 @@ public class GuiItemMover extends GuiContainer {
             IInventory inv = tile.getOutputInventory();
 
             if (inv != null && inv.getSizeInventory() > 0) {
+            	boolean ctrl = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL);
                 int currentMapping = tile.getPushSlotMapping(ghostIndex);
-                int nextMapping = (currentMapping + 1) % inv.getSizeInventory();
+                int step = ctrl ? 5 : 1;
+                int nextMapping = (currentMapping + step) % inv.getSizeInventory();
+                
                 tile.setPushSlotMapping(ghostIndex, nextMapping);
                 button.displayString = String.valueOf(nextMapping);
 
@@ -195,11 +203,12 @@ public class GuiItemMover extends GuiContainer {
             IInventory inv = tile.getInputInventory();
 
             if (inv != null && inv.getSizeInventory() > 0) {
-                int invSize = inv.getSizeInventory();
+            	boolean ctrl = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL);
                 int currentMapping = tile.getPullSlotMapping(ghostIndex);
-                // Cycle backwards through available slots
-                int nextMapping = (currentMapping - 1 + invSize) % invSize;
-
+                int step = ctrl ? 5 : 1; // Ctrl decreases by 5
+                int nextMapping = (currentMapping - step) % inv.getSizeInventory();
+                if (nextMapping < 0) nextMapping += inv.getSizeInventory(); // wrap around
+                
                 tile.setPullSlotMapping(ghostIndex, nextMapping);
                 button.displayString = String.valueOf(nextMapping);
 
@@ -213,10 +222,11 @@ public class GuiItemMover extends GuiContainer {
             IInventory inv = tile.getOutputInventory();
 
             if (inv != null && inv.getSizeInventory() > 0) {
-                int invSize = inv.getSizeInventory();
+            	boolean ctrl = Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL);
                 int currentMapping = tile.getPushSlotMapping(ghostIndex);
-                // Cycle backwards through available slots
-                int nextMapping = (currentMapping - 1 + invSize) % invSize;
+                int step = ctrl ? 5 : 1;
+                int nextMapping = (currentMapping - step) % inv.getSizeInventory();
+                if (nextMapping < 0) nextMapping += inv.getSizeInventory();
 
                 tile.setPushSlotMapping(ghostIndex, nextMapping);
                 button.displayString = String.valueOf(nextMapping);
