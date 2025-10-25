@@ -17,6 +17,7 @@ import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.ForgeDirection;
 
@@ -25,7 +26,7 @@ public class GuiItemMover extends GuiContainer {
 
     private static final ResourceLocation GUI_TEXTURE = new ResourceLocation("itemmover", "textures/gui/item_mover.png");
     private final TileEntityItemMover tile;
-    private GuiButton buttonRequireSet;
+    private GuiButton buttonPushMode;
     
     private final List<GuiButton> pullButtons = new ArrayList<>();
     private final List<GuiButton> pushButtons = new ArrayList<>();
@@ -86,9 +87,9 @@ public class GuiItemMover extends GuiContainer {
         // Smart Push button
         int requireX = guiLeft + 210;
         int requireY = guiTop + 173; // adjust position
-        buttonRequireSet = new GuiButton(200, requireX, requireY, 80, 20,
+        buttonPushMode = new GuiButton(200, requireX, requireY, 80, 20,
             tile.getPushMode() ? "Smart Push: ON" : "Smart Push: OFF");
-        buttonList.add(buttonRequireSet);
+        buttonList.add(buttonPushMode);
         
         tile.validateSlotMappings();
         refreshSlotButtons();
@@ -332,5 +333,31 @@ public class GuiItemMover extends GuiContainer {
     protected void drawGuiContainerBackgroundLayer(float partialTicks, int mouseX, int mouseY) {
         mc.getTextureManager().bindTexture(GUI_TEXTURE);
         drawTexturedModalRect(guiLeft, guiTop, 0, 0, xSize, ySize);
+    }
+    
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        super.drawScreen(mouseX, mouseY, partialTicks);
+
+        // Draw tooltip when hovering over Smart Push button
+        if (buttonPushMode != null && isMouseOverButton(buttonPushMode, mouseX, mouseY)) {
+            List<String> tooltip = new ArrayList<String>();
+            tooltip.add(EnumChatFormatting.YELLOW + "Smart Push Mode");
+            tooltip.add(EnumChatFormatting.GRAY + "Only pushes items when");
+            tooltip.add(EnumChatFormatting.GRAY + "all ghost slot requirements");
+            tooltip.add(EnumChatFormatting.GRAY + "are met in internal inventory.");
+
+            drawHoveringText(tooltip, mouseX, mouseY, fontRendererObj);
+        }
+    }
+
+    /**
+     * Utility: check if mouse is over a button.
+     */
+    private boolean isMouseOverButton(GuiButton button, int mouseX, int mouseY) {
+        int x = button.xPosition;
+        int y = button.yPosition;
+        return mouseX >= x && mouseY >= y &&
+               mouseX < x + button.width && mouseY < y + button.height;
     }
 }
