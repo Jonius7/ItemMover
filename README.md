@@ -10,5 +10,12 @@ ItemMover block has 18 slot internal inventory, 12 Pull and 12 Push fully-featur
 
 - Can increase stack size of ghost slot by **left clicking**, decrease stack size by **right clicking**.
 - Can put in held stack size in ghost slot by **shift + clicking**.
-- Pushes items into specific slots in output
 - Pulls items from specific slots in input (not incl. chests which pull from first available slot)
+- Pushes items into specific slots in output
+- Has **Smart Push** toggle to only push if all required items configured in ghost slots are in internal inventory
+- Can configure input and output sides (NORTH, SOUTH, WEST, EAST, DOWN, UP)
+- Can change slot number for each ghost slot: 
+  - **left click** to increase by 1
+  - **right click** to decrease by 1
+  - **ctrl + click** to increment/decrement by 5
+  - **middle mouse click** to reset to default
