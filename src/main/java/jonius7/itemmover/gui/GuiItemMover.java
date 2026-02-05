@@ -389,17 +389,16 @@ public class GuiItemMover extends GuiContainer {
             drawHoveringText(tooltip, mouseX, mouseY, fontRendererObj);
         }
         
-     // --- PULL BUTTONS TOOLTIP ---
+        // --- PULL BUTTONS TOOLTIP ---
         TileEntity inputTE = tile.getAdjacentInputTile();
         for (GuiButton button : pullButtons) {
             if (!button.enabled && isMouseOverButton(button, mouseX, mouseY) && inputTE != null) {
                 Block block = inputTE.getBlockType();
                 if (block != null) {
                     String blockName = Block.blockRegistry.getNameForObject(block);
-                    String modName = block.getClass().getPackage().getName(); // crude mod package
                     if (blockName != null) {
                         drawHoveringText(
-                            Collections.singletonList("Blocked: " + modName + " / " + blockName),
+                            java.util.Arrays.asList("Blocked by config:", blockName),
                             mouseX, mouseY, fontRendererObj
                         );
                     }
@@ -414,10 +413,9 @@ public class GuiItemMover extends GuiContainer {
                 Block block = outputTE.getBlockType();
                 if (block != null) {
                     String blockName = Block.blockRegistry.getNameForObject(block);
-                    String modName = block.getClass().getPackage().getName();
                     if (blockName != null) {
                         drawHoveringText(
-                            Collections.singletonList("Blocked: " + modName + " / " + blockName),
+                            java.util.Arrays.asList("Blocked by config:", blockName),
                             mouseX, mouseY, fontRendererObj
                         );
                     }
