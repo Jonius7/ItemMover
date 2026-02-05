@@ -15,6 +15,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import jonius7.itemmover.blocks.BlockItemMover;
 import jonius7.itemmover.blocks.TileEntityItemMover;
+import jonius7.itemmover.config.ItemMoverConfig;
 import jonius7.itemmover.gui.ContainerItemMover;
 import jonius7.itemmover.gui.GuiItemMover;
 import jonius7.itemmover.network.PacketSetSlotMapping;
@@ -51,6 +52,9 @@ public class ItemMover implements IGuiHandler {
     
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
+    	// Load config
+    	ItemMoverConfig.load(event);
+    	
     	// Setup networking
         network = NetworkRegistry.INSTANCE.newSimpleChannel("itemmover");
         network.registerMessage(PacketUpdateItemMover.Handler.class, PacketUpdateItemMover.class, 0, Side.SERVER);

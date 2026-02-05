@@ -2,10 +2,13 @@ package jonius7.itemmover.blocks;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
+import jonius7.itemmover.config.ItemMoverConfig;
 import jonius7.itemmover.gui.ContainerItemMover;
 import jonius7.itemmover.gui.SimpleInventory;
 import jonius7.itemmover.gui.SimpleInventoryGhost;
+import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -100,6 +103,18 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
                 zCoord + dir.offsetZ
         );
         if (!(adjacent instanceof IInventory)) return;
+        
+        // --- BLACKLIST CHECK ---
+        Block block = adjacent.getBlockType();
+        if (block == null) return;
+
+        String blockName = Block.blockRegistry.getNameForObject(block).toLowerCase();
+        int meta = adjacent.getBlockMetadata();
+        if (ItemMoverConfig.pullBlacklist.contains(blockName) ||
+            ItemMoverConfig.pullBlacklist.contains(blockName + ":" + meta)) {
+            return; // Block is blacklisted, abort pull
+        }
+        
         IInventory source = (IInventory) adjacent;
 
         // --- Step 2: Iterate over each ghost slot (which corresponds to one source slot) ---
@@ -181,6 +196,18 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         );
 
         if (!(adjacent instanceof IInventory)) return;
+
+        // --- BLACKLIST CHECK ---
+        Block block = adjacent.getBlockType();
+        if (block == null) return;
+
+        String blockName = Block.blockRegistry.getNameForObject(block).toLowerCase();
+        int meta = adjacent.getBlockMetadata();
+        if (ItemMoverConfig.pushBlacklist.contains(blockName) ||
+            ItemMoverConfig.pushBlacklist.contains(blockName + ":" + meta)) {
+            return; // Block is blacklisted for push
+        }
+        
         IInventory target = (IInventory) adjacent;
         
         // If Smart Mode Toggle is on
@@ -797,5 +824,50 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     public void setPushMode(boolean value) {
         pushMode = value;
         markDirty();
+    }
+    
+    // Blacklist methods
+    private String getBlockName(TileEntity te) {
+        Block block = te.getBlockType();
+        return Block.blockRegistry.getNameForObject(block).toString();
+    }
+
+    private int getBlockMeta(TileEntity te) {
+        return te.getWorldObj().getBlockMetadata(
+            te.xCoord, te.yCoord, te.zCoord
+        );
+    }
+    
+    public boolean isPullBlacklisted() {
+        TileEntity te = getAdjacentTileEntity(inputSide);
+        return isBlacklisted(te, true);
+    }
+
+    public boolean isPushBlacklisted() {
+        TileEntity te = getAdjacentTileEntity(outputSide);
+        return isBlacklisted(te, false);
+    }
+
+    // Generic helper
+    private boolean isBlacklisted(TileEntity te, boolean pull) {
+        if (te == null) return true;
+        Block block = te.getBlockType();
+        if (block == null) return true;
+
+        String blockName = Block.blockRegistry.getNameForObject(block).toLowerCase();
+        int meta = te.getBlockMetadata();
+
+        Set<String> blacklist = pull ? ItemMoverConfig.pullBlacklist : (Set<String>) ItemMoverConfig.pushBlacklist;
+        return blacklist.contains(blockName) || blacklist.contains(blockName + ":" + meta);
+    }
+
+    // Helper to get adjacent TileEntity
+    private TileEntity getAdjacentTileEntity(int side) {
+        ForgeDirection dir = ForgeDirection.getOrientation(side);
+        return worldObj.getTileEntity(
+            xCoord + dir.offsetX,
+            yCoord + dir.offsetY,
+            zCoord + dir.offsetZ
+        );
     }
 }

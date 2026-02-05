@@ -1,6 +1,7 @@
 package jonius7.itemmover.gui;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.lwjgl.input.Keyboard;
@@ -287,6 +288,10 @@ public class GuiItemMover extends GuiContainer {
      * Updates their display text and disables buttons for invalid slots.
      */
     public void refreshSlotButtons() {
+        // --- Check if sides are blacklisted ---
+        boolean pullBlacklisted = tile.isPullBlacklisted();
+        boolean pushBlacklisted = tile.isPushBlacklisted();
+
         // --- PULL BUTTONS ---
         IInventory inputInv = tile.getInputInventory();
         int inputSize = (inputInv != null) ? inputInv.getSizeInventory() : 0;
@@ -294,7 +299,9 @@ public class GuiItemMover extends GuiContainer {
         int pullCount = Math.min(pullButtons.size(), tile.getPullMappingLength());
         for (int i = 0; i < pullButtons.size(); i++) {
             GuiButton button = pullButtons.get(i);
-            if (i < pullCount && inputSize > 0 && i < inputSize) {
+
+            // Disabled if either out of bounds OR blacklisted
+            if (i < pullCount && inputSize > 0 && i < inputSize && !pullBlacklisted) {
                 button.displayString = String.valueOf(tile.getPullSlotMapping(i));
                 button.enabled = true;
             } else {
@@ -310,7 +317,9 @@ public class GuiItemMover extends GuiContainer {
         int pushCount = Math.min(pushButtons.size(), tile.getPushMappingLength());
         for (int i = 0; i < pushButtons.size(); i++) {
             GuiButton button = pushButtons.get(i);
-            if (i < pushCount && outputSize > 0 && i < outputSize) {
+
+            // Disabled if either out of bounds OR blacklisted
+            if (i < pushCount && outputSize > 0 && i < outputSize && !pushBlacklisted) {
                 button.displayString = String.valueOf(tile.getPushSlotMapping(i));
                 button.enabled = true;
             } else {
@@ -327,6 +336,34 @@ public class GuiItemMover extends GuiContainer {
         fontRendererObj.drawString("Item Mover", 8, 6, 0x404040);
         fontRendererObj.drawString("Pull", 22, 25, 0x404040);
         fontRendererObj.drawString("Push", 149, 25, 0x404040);
+        
+        for (Object obj : buttonList) {
+            GuiButton button = (GuiButton) obj;
+
+            if (!button.enabled) continue;
+
+            // Pull buttons
+            if (button.id == 0) {
+                int side = tile.getInputSide();
+                drawSideSquare(button, side);
+            }
+
+            // Push buttons
+            else if (button.id == 1) {
+                int side = tile.getOutputSide();
+                drawSideSquare(button, side);
+            }
+        }
+    }
+    
+    private void drawSideSquare(GuiButton button, int side) {
+        int color = getSideColor(side);
+
+        // Square position (relative to button)
+        int x = button.xPosition + button.width - 10;
+        int y = button.yPosition + 3;
+
+        drawRect(x, y, x + 6, y + 6, color);
     }
 
     @Override
@@ -349,6 +386,22 @@ public class GuiItemMover extends GuiContainer {
 
             drawHoveringText(tooltip, mouseX, mouseY, fontRendererObj);
         }
+        
+        // --- Pull Buttons Tooltip ---
+        boolean pullBlacklisted = tile.isPullBlacklisted();
+        for (GuiButton button : pullButtons) {
+            if (pullBlacklisted && !button.enabled && isMouseOverButton(button, mouseX, mouseY)) {
+                drawHoveringText(Collections.singletonList("Blocked by config"), mouseX, mouseY, fontRendererObj);
+            }
+        }
+
+        // --- Push Buttons Tooltip ---
+        boolean pushBlacklisted = tile.isPushBlacklisted();
+        for (GuiButton button : pushButtons) {
+            if (pushBlacklisted && !button.enabled && isMouseOverButton(button, mouseX, mouseY)) {
+                drawHoveringText(Collections.singletonList("Blocked by config"), mouseX, mouseY, fontRendererObj);
+            }
+        }
     }
 
     /**
@@ -360,4 +413,17 @@ public class GuiItemMover extends GuiContainer {
         return mouseX >= x && mouseY >= y &&
                mouseX < x + button.width && mouseY < y + button.height;
     }
+    
+    private int getSideColor(int side) {
+        switch (side) {
+            case 0: return 0x00FFFF; // Cyan (Bottom)
+            case 1: return 0x0000FF; // Blue (Up)
+            case 2: return 0xFFFF00; // Yellow (North)
+            case 3: return 0x00FF00; // Green (South)
+            case 4: return 0xFF0000; // Red (West)
+            case 5: return 0xFF69B4; // Pink (East)
+            default: return 0xFFFFFF;
+        }
+    }
+
 }
