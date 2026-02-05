@@ -394,11 +394,15 @@ public class GuiItemMover extends GuiContainer {
         for (GuiButton button : pullButtons) {
             if (!button.enabled && isMouseOverButton(button, mouseX, mouseY) && inputTE != null) {
                 Block block = inputTE.getBlockType();
+                int meta = inputTE.getBlockMetadata(); // get meta
                 if (block != null) {
                     String blockName = Block.blockRegistry.getNameForObject(block);
                     if (blockName != null) {
                         drawHoveringText(
-                            java.util.Arrays.asList("Blocked by config:", blockName),
+                            java.util.Arrays.asList(
+                                "Blocked by config:",
+                                blockName + ":" + meta // include metadata
+                            ),
                             mouseX, mouseY, fontRendererObj
                         );
                     }
@@ -411,11 +415,15 @@ public class GuiItemMover extends GuiContainer {
         for (GuiButton button : pushButtons) {
             if (!button.enabled && isMouseOverButton(button, mouseX, mouseY) && outputTE != null) {
                 Block block = outputTE.getBlockType();
+                int meta = outputTE.getBlockMetadata();
                 if (block != null) {
                     String blockName = Block.blockRegistry.getNameForObject(block);
                     if (blockName != null) {
                         drawHoveringText(
-                            java.util.Arrays.asList("Blocked by config:", blockName),
+                            java.util.Arrays.asList(
+                                "Blocked by config:",
+                                blockName + ":" + meta
+                            ),
                             mouseX, mouseY, fontRendererObj
                         );
                     }
