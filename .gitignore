@@ -34,3 +34,5 @@ bin/
 # Minecraft
 run/
 runServer/
+
+.metals/

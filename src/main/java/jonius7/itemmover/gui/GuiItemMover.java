@@ -14,10 +14,12 @@ import jonius7.itemmover.network.PacketSetSlotMapping;
 import jonius7.itemmover.network.PacketTogglePushMode;
 import jonius7.itemmover.network.PacketUpdateItemMover;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.block.Block;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -387,19 +389,39 @@ public class GuiItemMover extends GuiContainer {
             drawHoveringText(tooltip, mouseX, mouseY, fontRendererObj);
         }
         
-        // --- Pull Buttons Tooltip ---
-        boolean pullBlacklisted = tile.isPullBlacklisted();
+     // --- PULL BUTTONS TOOLTIP ---
+        TileEntity inputTE = tile.getAdjacentInputTile();
         for (GuiButton button : pullButtons) {
-            if (pullBlacklisted && !button.enabled && isMouseOverButton(button, mouseX, mouseY)) {
-                drawHoveringText(Collections.singletonList("Blocked by config"), mouseX, mouseY, fontRendererObj);
+            if (!button.enabled && isMouseOverButton(button, mouseX, mouseY) && inputTE != null) {
+                Block block = inputTE.getBlockType();
+                if (block != null) {
+                    String blockName = Block.blockRegistry.getNameForObject(block);
+                    String modName = block.getClass().getPackage().getName(); // crude mod package
+                    if (blockName != null) {
+                        drawHoveringText(
+                            Collections.singletonList("Blocked: " + modName + " / " + blockName),
+                            mouseX, mouseY, fontRendererObj
+                        );
+                    }
+                }
             }
         }
 
-        // --- Push Buttons Tooltip ---
-        boolean pushBlacklisted = tile.isPushBlacklisted();
+        // --- PUSH BUTTONS TOOLTIP ---
+        TileEntity outputTE = tile.getAdjacentOutputTile();
         for (GuiButton button : pushButtons) {
-            if (pushBlacklisted && !button.enabled && isMouseOverButton(button, mouseX, mouseY)) {
-                drawHoveringText(Collections.singletonList("Blocked by config"), mouseX, mouseY, fontRendererObj);
+            if (!button.enabled && isMouseOverButton(button, mouseX, mouseY) && outputTE != null) {
+                Block block = outputTE.getBlockType();
+                if (block != null) {
+                    String blockName = Block.blockRegistry.getNameForObject(block);
+                    String modName = block.getClass().getPackage().getName();
+                    if (blockName != null) {
+                        drawHoveringText(
+                            Collections.singletonList("Blocked: " + modName + " / " + blockName),
+                            mouseX, mouseY, fontRendererObj
+                        );
+                    }
+                }
             }
         }
     }

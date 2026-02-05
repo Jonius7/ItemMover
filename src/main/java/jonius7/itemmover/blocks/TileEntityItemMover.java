@@ -877,4 +877,14 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
             zCoord + dir.offsetZ
         );
     }
+    
+    // Returns the adjacent TileEntity on the input side
+    public TileEntity getAdjacentInputTile() {
+        return getAdjacentTileEntity(inputSide);
+    }
+
+    // Returns the adjacent TileEntity on the output side
+    public TileEntity getAdjacentOutputTile() {
+        return getAdjacentTileEntity(outputSide);
+    }
 }
