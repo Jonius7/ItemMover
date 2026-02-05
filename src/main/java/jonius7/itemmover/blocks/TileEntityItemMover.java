@@ -1,6 +1,7 @@
 package jonius7.itemmover.blocks;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -838,30 +839,36 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
         );
     }
     
+ // --- Pull blacklist check ---
     public boolean isPullBlacklisted() {
         TileEntity te = getAdjacentTileEntity(inputSide);
         return isBlacklisted(te, true);
     }
 
+    // --- Push blacklist check ---
     public boolean isPushBlacklisted() {
         TileEntity te = getAdjacentTileEntity(outputSide);
         return isBlacklisted(te, false);
     }
 
-    // Generic helper
+    // --- Generic blacklist helper ---
     private boolean isBlacklisted(TileEntity te, boolean pull) {
         if (te == null) return true;
+
         Block block = te.getBlockType();
         if (block == null) return true;
 
         String blockName = Block.blockRegistry.getNameForObject(block).toLowerCase();
         int meta = te.getBlockMetadata();
 
-        Set<String> blacklist = pull ? ItemMoverConfig.pullBlacklist : (Set<String>) ItemMoverConfig.pushBlacklist;
+        Set<String> blacklist = pull ? new HashSet<>(ItemMoverConfig.pullBlacklist) 
+                                     : new HashSet<>(ItemMoverConfig.pushBlacklist);
+
+        // Check by block name or block:meta
         return blacklist.contains(blockName) || blacklist.contains(blockName + ":" + meta);
     }
 
-    // Helper to get adjacent TileEntity
+    // --- Helper to get any adjacent TileEntity ---
     private TileEntity getAdjacentTileEntity(int side) {
         ForgeDirection dir = ForgeDirection.getOrientation(side);
         return worldObj.getTileEntity(

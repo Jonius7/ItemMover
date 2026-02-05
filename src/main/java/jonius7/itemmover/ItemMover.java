@@ -1,5 +1,7 @@
 package jonius7.itemmover;
 
+import java.io.File;
+
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.Mod.Instance;
@@ -37,7 +39,7 @@ public class ItemMover implements IGuiHandler {
     public static SimpleNetworkWrapper network;
 	
 	public static final String MODID = "itemmover";
-    public static final String VERSION = "0.4.7";
+    public static final String VERSION = "0.4.9";
 	
     public static Block itemMover;
     
@@ -53,7 +55,8 @@ public class ItemMover implements IGuiHandler {
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
     	// Load config
-    	ItemMoverConfig.load(event);
+    	File cfgFile = new File(event.getModConfigurationDirectory(), "itemmover.cfg");
+        ItemMoverConfig.load(cfgFile);
     	
     	// Setup networking
         network = NetworkRegistry.INSTANCE.newSimpleChannel("itemmover");
