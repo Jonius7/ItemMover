@@ -84,14 +84,21 @@ public class GuiItemMover extends GuiContainer {
         }
        
         // Side Selection Buttons
-        this.buttonList.add(new GuiButton(0, guiLeft + 50, guiTop + 19, 60, 20, getSideName(tile.getInputSide())));
-        this.buttonList.add(new GuiButton(1, guiLeft + 179, guiTop + 19, 60, 20, getSideName(tile.getOutputSide())));
+        this.buttonList.add(
+        	    new GuiButton(0, guiLeft + 70, guiTop + 19, 55, 20,
+        	        getSideButtonText(tile.getInputSide()))
+    	);
+
+    	this.buttonList.add(
+    	    new GuiButton(1, guiLeft + 199, guiTop + 19, 55, 20,
+    	        getSideButtonText(tile.getOutputSide()))
+    	);
         
         // Smart Push button
-        int requireX = guiLeft + 210;
-        int requireY = guiTop + 173; // adjust position
-        buttonPushMode = new GuiButton(200, requireX, requireY, 80, 20,
-            tile.getPushMode() ? "Smart Push: ON" : "Smart Push: OFF");
+        int requireX = guiLeft + 136;
+        int requireY = guiTop + 19; // adjust position
+        buttonPushMode = new GuiButton(200, requireX, requireY, 60, 20,
+            tile.getPushMode() ? "Smart Push" : "Push");
         buttonList.add(buttonPushMode);
         
         tile.validateSlotMappings();
@@ -137,16 +144,16 @@ public class GuiItemMover extends GuiContainer {
             tile.cycleInputSide(true); // forwards
             tile.validateSlotMappings();
             refreshSlotButtons();
-            button.displayString = getSideName(tile.getInputSide());
+            button.displayString = getSideButtonText(tile.getInputSide());
         } else if (button.id == 1) {
             tile.cycleOutputSide(true); // forwards
             tile.validateSlotMappings();
             refreshSlotButtons();
-            button.displayString = getSideName(tile.getOutputSide());
+            button.displayString = getSideButtonText(tile.getOutputSide());
         } else if (button.id == 200) {
             boolean newState = !tile.getPushMode();
             tile.setPushMode(newState);
-            button.displayString = newState ? "Smart Push: ON" : "Smart Push: OFF";
+            button.displayString = newState ? "Smart Push" : "Push";
             ItemMover.network.sendToServer(
                 new PacketTogglePushMode(tile.xCoord, tile.yCoord, tile.zCoord)
             );
@@ -196,12 +203,12 @@ public class GuiItemMover extends GuiContainer {
             tile.cycleInputSide(false); // backwards
             tile.validateSlotMappings();
             refreshSlotButtons();
-            button.displayString = getSideName(tile.getInputSide());
+            button.displayString = getSideButtonText(tile.getInputSide());
         } else if (button.id == 1) {
             tile.cycleOutputSide(false); // backwards
             tile.validateSlotMappings();
             refreshSlotButtons();
-            button.displayString = getSideName(tile.getOutputSide());
+            button.displayString = getSideButtonText(tile.getOutputSide());
         } else if (button.id >= 100 && button.id < 112) { // Pull slot buttons
             int ghostIndex = button.id - 100;
             IInventory inv = tile.getInputInventory();
@@ -337,35 +344,8 @@ public class GuiItemMover extends GuiContainer {
 
         fontRendererObj.drawString("Item Mover", 8, 6, 0x404040);
         fontRendererObj.drawString("Pull", 22, 25, 0x404040);
-        fontRendererObj.drawString("Push", 149, 25, 0x404040);
+        //fontRendererObj.drawString("Push", 149, 25, 0x404040);
         
-        for (Object obj : buttonList) {
-            GuiButton button = (GuiButton) obj;
-
-            if (!button.enabled) continue;
-
-            // Pull buttons
-            if (button.id == 0) {
-                int side = tile.getInputSide();
-                drawSideSquare(button, side);
-            }
-
-            // Push buttons
-            else if (button.id == 1) {
-                int side = tile.getOutputSide();
-                drawSideSquare(button, side);
-            }
-        }
-    }
-    
-    private void drawSideSquare(GuiButton button, int side) {
-        int color = getSideColor(side);
-
-        // Square position (relative to button)
-        int x = button.xPosition + button.width - 10;
-        int y = button.yPosition + 3;
-
-        drawRect(x, y, x + 6, y + 6, color);
     }
 
     @Override
@@ -442,15 +422,21 @@ public class GuiItemMover extends GuiContainer {
                mouseX < x + button.width && mouseY < y + button.height;
     }
     
-    private int getSideColor(int side) {
+    private String getSideButtonText(int side) {
+        return getSideColorCode(side) + "\u25A0 " +
+               "\u00A7f" +
+               getSideName(side);
+    }
+    
+    private String getSideColorCode(int side) {
         switch (side) {
-            case 0: return 0x00FFFF; // Cyan (Bottom)
-            case 1: return 0x0000FF; // Blue (Up)
-            case 2: return 0xFFFF00; // Yellow (North)
-            case 3: return 0x00FF00; // Green (South)
-            case 4: return 0xFF0000; // Red (West)
-            case 5: return 0xFF69B4; // Pink (East)
-            default: return 0xFFFFFF;
+            case 0: return "\u00A7b"; // Cyan (Down)
+            case 1: return "\u00A79"; // Blue (Up)
+            case 2: return "\u00A7e"; // Yellow (North)
+            case 3: return "\u00A7a"; // Green (South)
+            case 4: return "\u00A7c"; // Red (West)
+            case 5: return "\u00A7d"; // Pink (East)
+            default: return "\u00A7f";
         }
     }
 
