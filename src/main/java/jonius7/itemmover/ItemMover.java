@@ -5,6 +5,8 @@ import java.io.File;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.Mod.Instance;
+import cpw.mods.fml.common.SidedProxy;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.network.IGuiHandler;
 import cpw.mods.fml.common.network.NetworkRegistry;
@@ -23,6 +25,7 @@ import jonius7.itemmover.gui.GuiItemMover;
 import jonius7.itemmover.network.PacketSetSlotMapping;
 import jonius7.itemmover.network.PacketTogglePushMode;
 import jonius7.itemmover.network.PacketUpdateItemMover;
+import jonius7.itemmover.proxy.CommonProxy;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.relauncher.Side;
 
@@ -39,9 +42,13 @@ public class ItemMover implements IGuiHandler {
     public static SimpleNetworkWrapper network;
 	
 	public static final String MODID = "itemmover";
-    public static final String VERSION = "0.4.11";
+    public static final String VERSION = "0.4.12";
 	
     public static Block itemMover;
+    
+    @SidedProxy(clientSide = "jonius7.itemmover.proxy.ClientProxy", 
+            serverSide = "jonius7.itemmover.proxy.CommonProxy")
+    public static CommonProxy proxy;
     
     // Custom creative tab
     public static final CreativeTabs tabItemMover = new CreativeTabs("itemMoverTab") {
@@ -68,6 +75,12 @@ public class ItemMover implements IGuiHandler {
         GameRegistry.registerBlock(itemMover, "itemMover");
         GameRegistry.registerTileEntity(TileEntityItemMover.class, "item_mover");
         NetworkRegistry.INSTANCE.registerGuiHandler(this, this);
+    }
+    
+    @EventHandler
+    public void init(FMLInitializationEvent event) {
+        // This connects your proxy registration to the game loop
+        proxy.registerRenderers();
     }
     
     @Override

@@ -575,6 +575,8 @@ public class TileEntityItemMover extends TileEntity implements IInventory {
     @Override
     public void onDataPacket(NetworkManager net, S35PacketUpdateTileEntity pkt) {
         this.readFromNBT(pkt.func_148857_g());
+        // After reading data, tell the world to re-render the block visually
+        worldObj.markBlockRangeForRenderUpdate(xCoord, yCoord, zCoord, xCoord, yCoord, zCoord);
     }
 
     private void sendUpdatePacket() {
