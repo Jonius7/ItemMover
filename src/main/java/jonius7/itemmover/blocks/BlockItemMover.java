@@ -21,6 +21,14 @@ public class BlockItemMover extends BlockContainer {
 	private IIcon baseIcon;
     private IIcon pullIcon;
     private IIcon pushIcon;
+	private IIcon topIcon;
+	private IIcon downIcon;
+	private IIcon upIcon;
+	private IIcon northIcon;
+	private IIcon southIcon;
+	private IIcon westIcon;
+	private IIcon eastIcon;
+	private IIcon blankIcon;
 	
 	
     public BlockItemMover() {
@@ -118,15 +126,39 @@ public class BlockItemMover extends BlockContainer {
     	this.baseIcon = reg.registerIcon("itemmover:itemmover");
         this.setPullIcon(reg.registerIcon("itemmover:itemmover_pull"));
         this.setPushIcon(reg.registerIcon("itemmover:itemmover_push"));
+        this.topIcon = reg.registerIcon("itemmover:itemmover_top");
+        this.downIcon = reg.registerIcon("itemmover:cyan");
+        this.upIcon = reg.registerIcon("itemmover:blue");
+        this.northIcon = reg.registerIcon("itemmover:yellow");
+        this.southIcon = reg.registerIcon("itemmover:green");
+        this.westIcon = reg.registerIcon("itemmover:red");
+        this.eastIcon = reg.registerIcon("itemmover:pink");
+        this.blankIcon = reg.registerIcon("itemmover:blank");
+    }
+    
+    public IIcon getSideIcon(int side) {
+    	if (side == 0) return this.downIcon;
+        if (side == 1) return this.upIcon;
+        if (side == 2) return this.northIcon;
+        if (side == 3) return this.southIcon;
+        if (side == 4) return this.westIcon;
+        if (side == 5) return this.eastIcon;
+        else return this.blankIcon;
     }
     
     @Override
     public IIcon getIcon(int side, int metadata) {
-        return baseIcon; // Default
+    	if (side == 1) { // 1 is the Top side
+            return topIcon;
+        }
+        return baseIcon;
     }
     
     @Override
     public IIcon getIcon(IBlockAccess world, int x, int y, int z, int side) {
+    	if (side == 1) { // Top side
+            return this.topIcon;
+        }
         return baseIcon;
     }
     

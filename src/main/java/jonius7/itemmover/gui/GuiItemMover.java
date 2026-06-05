@@ -85,12 +85,12 @@ public class GuiItemMover extends GuiContainer {
        
         // Side Selection Buttons
         this.buttonList.add(
-        	    new GuiButton(0, guiLeft + 70, guiTop + 19, 55, 20,
+        	    new GuiButton(0, guiLeft + 70, guiTop + 19, 52, 20,
         	        getSideButtonText(tile.getInputSide()))
     	);
 
     	this.buttonList.add(
-    	    new GuiButton(1, guiLeft + 199, guiTop + 19, 55, 20,
+    	    new GuiButton(1, guiLeft + 199, guiTop + 19, 52, 20,
     	        getSideButtonText(tile.getOutputSide()))
     	);
         
@@ -343,7 +343,7 @@ public class GuiItemMover extends GuiContainer {
         super.drawGuiContainerForegroundLayer(mouseX, mouseY);
 
         fontRendererObj.drawString("Item Mover", 8, 6, 0x404040);
-        fontRendererObj.drawString("Pull", 22, 25, 0x404040);
+        fontRendererObj.drawString("Pull", 42, 25, 0x404040);
         //fontRendererObj.drawString("Push", 149, 25, 0x404040);
         
     }
