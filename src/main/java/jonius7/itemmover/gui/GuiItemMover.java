@@ -423,7 +423,7 @@ public class GuiItemMover extends GuiContainer {
     }
     
     private String getSideButtonText(int side) {
-        return getSideColorCode(side) + "\u25A0 " +
+        return getSideColorCode(side) + "\u2B1B " +
                "\u00A7f" +
                getSideName(side);
     }
